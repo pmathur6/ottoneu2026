@@ -1,17 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchSheet } from "@/lib/sheets";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { Settings2 } from "lucide-react";
 
 const HITTER_COLS = [
-  "Name", "Team", "YTD_G", "YTD_PA", "YTD_HR", "YTD_R", "YTD_OBP", "YTD_SLG",
+  "PlayerName", "Team", "YTD_G", "YTD_PA", "YTD_HR", "YTD_R", "YTD_OBP", "YTD_SLG",
   "YTD_wOBA", "YTD_xwOBA", "YTD_AVG", "YTD_BABIP", "YTD_wRC+",
   "ROS_G", "ROS_PA", "ROS_HR", "ROS_R", "ROS_OBP", "ROS_SLG", "ROS_wRC+",
   "BL_G", "BL_PA", "BL_HR", "BL_R", "BL_OBP", "BL_SLG",
@@ -19,7 +23,7 @@ const HITTER_COLS = [
 ];
 
 const PITCHER_COLS = [
-  "Name", "Team", "YTD_IP", "YTD_ERA", "YTD_SO", "YTD_WHIP", "YTD_HR/9", "YTD_K/9",
+  "PlayerName", "Team", "YTD_IP", "YTD_ERA", "YTD_SO", "YTD_WHIP", "YTD_HR/9", "YTD_K/9",
   "YTD_FIP", "YTD_xFIP", "YTD_xERA", "YTD_BABIP",
   "ROS_IP", "ROS_SO", "ROS_ERA", "ROS_WHIP", "ROS_HR/9",
   "BL_IP", "BL_SO", "BL_ERA", "BL_WHIP", "BL_HR/9",
@@ -53,11 +57,6 @@ function formatCell(col: string, value: string) {
 const Rosters = () => {
   const [team, setTeam] = useState<string>("");
 
-  const { data: roster, isLoading: rosterLoading } = useQuery({
-    queryKey: ["roster-info"],
-    queryFn: () => fetchSheet("Roster Info"),
-  });
-
   const { data: hitters, isLoading: hLoading } = useQuery({
     queryKey: ["blended-h"],
     queryFn: () => fetchSheet("Blended H"),
@@ -68,31 +67,22 @@ const Rosters = () => {
     queryFn: () => fetchSheet("Blended P"),
   });
 
-  const isLoading = rosterLoading || hLoading || pLoading;
+  const isLoading = hLoading || pLoading;
 
   const teams = useMemo(() => {
-    if (!roster) return [];
-    const s = new Set(roster.map(r => r["Fantasy Team"] || r["Team"] || "").filter(Boolean));
+    const all = [...(hitters ?? []), ...(pitchers ?? [])];
+    const s = new Set(all.map(r => r["Roster"] || "").filter(Boolean));
     return Array.from(s).sort();
-  }, [roster]);
-
-  const rosterMap = useMemo(() => {
-    if (!roster) return new Set<string>();
-    return new Set(
-      roster
-        .filter(r => (r["Fantasy Team"] || r["Team"]) === team)
-        .map(r => r["Name"] || r["Player"] || "")
-    );
-  }, [roster, team]);
+  }, [hitters, pitchers]);
 
   const teamHitters = useMemo(
-    () => (hitters ?? []).filter(h => rosterMap.has(h["Name"] || "")),
-    [hitters, rosterMap]
+    () => (hitters ?? []).filter(h => h["Roster"] === team),
+    [hitters, team]
   );
 
   const teamPitchers = useMemo(
-    () => (pitchers ?? []).filter(p => rosterMap.has(p["Name"] || "")),
-    [pitchers, rosterMap]
+    () => (pitchers ?? []).filter(p => p["Roster"] === team),
+    [pitchers, team]
   );
 
   if (isLoading) {
@@ -137,33 +127,107 @@ const Rosters = () => {
   );
 };
 
+type SortDir = "asc" | "desc" | null;
+
 function DataTable({ title, columns, data }: { title: string; columns: string[]; data: Record<string, string>[] }) {
+  const [sortCol, setSortCol] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>(null);
+  const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
+
+  const handleSort = useCallback((col: string) => {
+    if (sortCol !== col) {
+      setSortCol(col);
+      setSortDir("asc");
+    } else if (sortDir === "asc") {
+      setSortDir("desc");
+    } else {
+      setSortCol(null);
+      setSortDir(null);
+    }
+  }, [sortCol, sortDir]);
+
+  const toggleCol = useCallback((col: string) => {
+    setHiddenCols(prev => {
+      const next = new Set(prev);
+      if (next.has(col)) next.delete(col);
+      else next.add(col);
+      return next;
+    });
+  }, []);
+
+  const visibleCols = useMemo(() => columns.filter(c => !hiddenCols.has(c)), [columns, hiddenCols]);
+
+  const sortedData = useMemo(() => {
+    if (!sortCol || !sortDir) return data;
+    return [...data].sort((a, b) => {
+      const aVal = a[sortCol] ?? "";
+      const bVal = b[sortCol] ?? "";
+      const aNum = parseFloat(aVal);
+      const bNum = parseFloat(bVal);
+      let cmp: number;
+      if (!isNaN(aNum) && !isNaN(bNum)) {
+        cmp = aNum - bNum;
+      } else {
+        cmp = aVal.localeCompare(bVal);
+      }
+      return sortDir === "desc" ? -cmp : cmp;
+    });
+  }, [data, sortCol, sortDir]);
+
   return (
     <div className="space-y-2">
-      <h2 className="text-lg font-semibold text-muted-foreground uppercase tracking-wider">{title}</h2>
+      <div className="flex items-center gap-2">
+        <h2 className="text-lg font-semibold text-muted-foreground uppercase tracking-wider">{title}</h2>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7">
+              <Settings2 className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="max-h-80 overflow-y-auto">
+            {columns.map(col => (
+              <DropdownMenuCheckboxItem
+                key={col}
+                checked={!hiddenCols.has(col)}
+                disabled={col === "PlayerName"}
+                onCheckedChange={() => toggleCol(col)}
+              >
+                {col}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       <div className="rounded-lg border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                {columns.map(col => (
-                  <TableHead key={col} className="text-xs font-semibold text-muted-foreground whitespace-nowrap px-3">
+                {visibleCols.map(col => (
+                  <TableHead
+                    key={col}
+                    className="text-xs font-semibold text-muted-foreground whitespace-nowrap px-3 cursor-pointer select-none hover:text-foreground transition-colors"
+                    onClick={() => handleSort(col)}
+                  >
                     {col}
+                    {sortCol === col && (
+                      <span className="ml-1">{sortDir === "asc" ? "▲" : "▼"}</span>
+                    )}
                   </TableHead>
                 ))}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.length === 0 ? (
+              {sortedData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={columns.length} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={visibleCols.length} className="text-center text-muted-foreground py-8">
                     No players found.
                   </TableCell>
                 </TableRow>
               ) : (
-                data.map((row, i) => (
+                sortedData.map((row, i) => (
                   <TableRow key={i} className="border-border hover:bg-accent/50">
-                    {columns.map(col => (
+                    {visibleCols.map(col => (
                       <TableCell key={col} className="whitespace-nowrap px-3 py-2 text-sm font-mono">
                         {formatCell(col, row[col] ?? "")}
                       </TableCell>
