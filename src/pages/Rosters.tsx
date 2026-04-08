@@ -227,18 +227,24 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                {visibleCols.map(col => (
-                  <TableHead
-                    key={col}
-                    className="text-xs font-semibold text-muted-foreground whitespace-nowrap px-3 cursor-pointer select-none hover:text-foreground transition-colors"
-                    onClick={() => handleSort(col)}
-                  >
-                    {col}
-                    {sortCol === col && (
-                      <span className="ml-1">{sortDir === "asc" ? "▲" : "▼"}</span>
-                    )}
-                  </TableHead>
-                ))}
+                {visibleCols.map((col, idx) => {
+                  const prevCol = idx > 0 ? visibleCols[idx - 1] : null;
+                  const curSection = getSection(col);
+                  const prevSection = prevCol ? getSection(prevCol) : null;
+                  const isDivider = curSection !== null && curSection !== prevSection;
+                  return (
+                    <TableHead
+                      key={col}
+                      className={`text-xs font-semibold text-muted-foreground whitespace-nowrap px-3 cursor-pointer select-none hover:text-foreground transition-colors${isDivider ? " border-l-2 border-border" : ""}`}
+                      onClick={() => handleSort(col)}
+                    >
+                      {col}
+                      {sortCol === col && (
+                        <span className="ml-1">{sortDir === "asc" ? "▲" : "▼"}</span>
+                      )}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -251,11 +257,17 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
               ) : (
                 sortedData.map((row, i) => (
                   <TableRow key={i} className="border-border hover:bg-accent/50">
-                    {visibleCols.map(col => (
-                      <TableCell key={col} className="whitespace-nowrap px-3 py-2 text-sm font-mono">
-                        {formatCell(col, row[col] ?? "")}
-                      </TableCell>
-                    ))}
+                    {visibleCols.map((col, idx) => {
+                      const prevCol = idx > 0 ? visibleCols[idx - 1] : null;
+                      const curSection = getSection(col);
+                      const prevSection = prevCol ? getSection(prevCol) : null;
+                      const isDivider = curSection !== null && curSection !== prevSection;
+                      return (
+                        <TableCell key={col} className={`whitespace-nowrap px-3 py-2 text-sm font-mono${isDivider ? " border-l-2 border-border" : ""}`}>
+                          {formatCell(col, row[col] ?? "")}
+                        </TableCell>
+                      );
+                    })}
                   </TableRow>
                 ))
               )}
