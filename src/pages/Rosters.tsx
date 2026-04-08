@@ -15,19 +15,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Settings2 } from "lucide-react";
 
 const HITTER_COLS = [
-  "PlayerName", "Team", "YTD_G", "YTD_PA", "YTD_HR", "YTD_R", "YTD_OBP", "YTD_SLG",
+  "PlayerName", "Team",
+  "Total WAR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason",
+  "YTD_G", "YTD_PA", "YTD_HR", "YTD_R", "YTD_OBP", "YTD_SLG",
   "YTD_wOBA", "YTD_xwOBA", "YTD_AVG", "YTD_BABIP", "YTD_wRC+",
   "ROS_G", "ROS_PA", "ROS_HR", "ROS_R", "ROS_OBP", "ROS_SLG", "ROS_wRC+",
   "BL_G", "BL_PA", "BL_HR", "BL_R", "BL_OBP", "BL_SLG",
-  "Total WAR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason",
 ];
 
 const PITCHER_COLS = [
-  "PlayerName", "Team", "YTD_IP", "YTD_ERA", "YTD_SO", "YTD_WHIP", "YTD_HR/9", "YTD_K/9",
+  "PlayerName", "Team",
+  "Total WAR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason",
+  "YTD_IP", "YTD_ERA", "YTD_SO", "YTD_WHIP", "YTD_HR/9", "YTD_K/9",
   "YTD_FIP", "YTD_xFIP", "YTD_xERA", "YTD_BABIP",
   "ROS_IP", "ROS_SO", "ROS_ERA", "ROS_WHIP", "ROS_HR/9",
   "BL_IP", "BL_SO", "BL_ERA", "BL_WHIP", "BL_HR/9",
-  "Total WAR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason",
 ];
 
 function getWarColor(val: number): string {
@@ -51,8 +53,30 @@ function formatCell(col: string, value: string) {
   if ((col === "Surplus Value" || col === "Chg. vs. Preseason") && !isNaN(num)) {
     return <span className={getValueColor(num)}>{value}</span>;
   }
+  if (!isNaN(num)) {
+    // 3 decimal: OBP, SLG, wOBA, xwOBA, AVG, BABIP
+    if (/OBP|SLG|wOBA|xwOBA|AVG|BABIP/i.test(col)) {
+      return num.toFixed(3);
+    }
+    // whole number: wRC+
+    if (/wRC\+/.test(col)) {
+      return Math.round(num).toString();
+    }
+    // 2 decimal: ERA, FIP, xFIP, xERA, WHIP, HR/9, K/9
+    if (/ERA|FIP|WHIP|HR\/9|K\/9/i.test(col)) {
+      return num.toFixed(2);
+    }
+  }
   return value;
 }
+
+function getSection(col: string): string | null {
+  if (col.startsWith("YTD_")) return "YTD";
+  if (col.startsWith("ROS_")) return "ROS";
+  if (col.startsWith("BL_")) return "BL";
+  return null;
+}
+
 
 const Rosters = () => {
   const [team, setTeam] = useState<string>("");
@@ -203,18 +227,24 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                {visibleCols.map(col => (
-                  <TableHead
-                    key={col}
-                    className="text-xs font-semibold text-muted-foreground whitespace-nowrap px-3 cursor-pointer select-none hover:text-foreground transition-colors"
-                    onClick={() => handleSort(col)}
-                  >
-                    {col}
-                    {sortCol === col && (
-                      <span className="ml-1">{sortDir === "asc" ? "▲" : "▼"}</span>
-                    )}
-                  </TableHead>
-                ))}
+                {visibleCols.map((col, idx) => {
+                  const prevCol = idx > 0 ? visibleCols[idx - 1] : null;
+                  const curSection = getSection(col);
+                  const prevSection = prevCol ? getSection(prevCol) : null;
+                  const isDivider = curSection !== null && curSection !== prevSection;
+                  return (
+                    <TableHead
+                      key={col}
+                      className={`text-xs font-semibold text-muted-foreground whitespace-nowrap px-3 cursor-pointer select-none hover:text-foreground transition-colors${isDivider ? " border-l-2 border-border" : ""}`}
+                      onClick={() => handleSort(col)}
+                    >
+                      {col}
+                      {sortCol === col && (
+                        <span className="ml-1">{sortDir === "asc" ? "▲" : "▼"}</span>
+                      )}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -227,11 +257,17 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
               ) : (
                 sortedData.map((row, i) => (
                   <TableRow key={i} className="border-border hover:bg-accent/50">
-                    {visibleCols.map(col => (
-                      <TableCell key={col} className="whitespace-nowrap px-3 py-2 text-sm font-mono">
-                        {formatCell(col, row[col] ?? "")}
-                      </TableCell>
-                    ))}
+                    {visibleCols.map((col, idx) => {
+                      const prevCol = idx > 0 ? visibleCols[idx - 1] : null;
+                      const curSection = getSection(col);
+                      const prevSection = prevCol ? getSection(prevCol) : null;
+                      const isDivider = curSection !== null && curSection !== prevSection;
+                      return (
+                        <TableCell key={col} className={`whitespace-nowrap px-3 py-2 text-sm font-mono${isDivider ? " border-l-2 border-border" : ""}`}>
+                          {formatCell(col, row[col] ?? "")}
+                        </TableCell>
+                      );
+                    })}
                   </TableRow>
                 ))
               )}
