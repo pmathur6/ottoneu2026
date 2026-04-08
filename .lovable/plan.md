@@ -1,37 +1,25 @@
 
 
-# Fantasy Baseball Analytics Hub
+# Rosters: Sorting, Column Visibility, and Data Fix
 
-## Overview
-A professional-grade fantasy baseball tool with a dark sports analytics aesthetic — dark navy backgrounds, clean white typography, and green/red accents. Three screens accessible via top nav.
+## 1. Fix roster filtering logic (critical bug)
+- Stop using `Roster Info` for team mapping. Instead, filter directly on the `Roster` column (column C) in `Blended H` and `Blended P`.
+- Use `PlayerName` (column B) instead of `Name` for display — rename the first entry in `HITTER_COLS` and `PITCHER_COLS` from `"Name"` to `"PlayerName"`.
+- Derive the team dropdown list from unique values of the `Roster` column across both `Blended H` and `Blended P`.
+- Remove the `Roster Info` query entirely.
 
-## Design
-- **Background**: Dark navy (#0a1128 / #1a1f3a)
-- **Text**: Clean white/light gray
-- **Accents**: Green for positive values, red for negative
-- **WAR color coding**: Purple (5+), Blue (2-5), Gray (0-2), Red (below 0)
-- **Feel**: Professional front office tool — dense data tables, minimal chrome
+## 2. Add column sorting to DataTable
+- Add `sortCol` and `sortDir` (`asc`/`desc`) state to `DataTable`.
+- Clicking a column header toggles sort direction (default asc, click again for desc, third click clears).
+- Sort logic: parse as number if possible, otherwise string comparison.
+- Show a small arrow indicator (▲/▼) next to the active sort column header.
 
-## Screen 1 — Standings
-- Placeholder page with "Coming Soon" styling
+## 3. Add column visibility toggling
+- Add `hiddenCols` state (a `Set<string>`) to each `DataTable`.
+- Render a dropdown button (using the existing `DropdownMenu` component) next to the table title with checkboxes for each column.
+- Unchecked columns are excluded from rendering in both header and body.
+- `PlayerName` column is always visible (cannot be hidden).
 
-## Screen 2 — Rosters (fully built)
-- Fetch `Blended H`, `Blended P`, and `Roster Info` tabs from Google Sheets using the provided API key and sheet ID
-- Dropdown to select from 12 fantasy teams (derived from Roster Info)
-- Two data tables stacked vertically: Hitters table on top, Pitchers below
-- All specified columns displayed with proper formatting
-- WAR values color-coded per spec
-- Surplus Value and Chg. vs. Preseason shown with green (positive) / red (negative) accents
-
-## Screen 3 — Trade Simulator
-- Placeholder page with "Coming Soon" styling
-
-## Navigation
-- Top nav bar with three tabs: Standings, Rosters, Trade Simulator
-- Dark themed nav matching the overall aesthetic
-
-## Data Layer
-- Reusable `fetchSheet(tabName)` utility function
-- React Query for data fetching with loading/error states
-- All data comes from the public Google Sheets API
+## Files changed
+- `src/pages/Rosters.tsx` — all three changes in this single file.
 
