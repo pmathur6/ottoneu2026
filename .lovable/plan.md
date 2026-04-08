@@ -1,25 +1,35 @@
 
 
-# Rosters: Sorting, Column Visibility, and Data Fix
+# Roster Table Enhancements
 
-## 1. Fix roster filtering logic (critical bug)
-- Stop using `Roster Info` for team mapping. Instead, filter directly on the `Roster` column (column C) in `Blended H` and `Blended P`.
-- Use `PlayerName` (column B) instead of `Name` for display — rename the first entry in `HITTER_COLS` and `PITCHER_COLS` from `"Name"` to `"PlayerName"`.
-- Derive the team dropdown list from unique values of the `Roster` column across both `Blended H` and `Blended P`.
-- Remove the `Roster Info` query entirely.
+## 1. Reorder columns — move value columns left
+Move "Total WAR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason" to right after "PlayerName" and "Team", before the YTD section.
 
-## 2. Add column sorting to DataTable
-- Add `sortCol` and `sortDir` (`asc`/`desc`) state to `DataTable`.
-- Clicking a column header toggles sort direction (default asc, click again for desc, third click clears).
-- Sort logic: parse as number if possible, otherwise string comparison.
-- Show a small arrow indicator (▲/▼) next to the active sort column header.
+**New HITTER_COLS order:**
+PlayerName, Team, Total WAR, Current Salary, Expected Value, Surplus Value, Chg. vs. Preseason, YTD_G, YTD_PA, ... BL_SLG
 
-## 3. Add column visibility toggling
-- Add `hiddenCols` state (a `Set<string>`) to each `DataTable`.
-- Render a dropdown button (using the existing `DropdownMenu` component) next to the table title with checkboxes for each column.
-- Unchecked columns are excluded from rendering in both header and body.
-- `PlayerName` column is always visible (cannot be hidden).
+**New PITCHER_COLS order:**
+PlayerName, Team, Total WAR, Current Salary, Expected Value, Surplus Value, Chg. vs. Preseason, YTD_IP, ... BL_HR/9
+
+## 2. Number formatting in `formatCell`
+Add rounding logic based on column name patterns:
+
+**Hitters:**
+- Columns containing `OBP`, `SLG`, `wOBA`, `AVG`, `BABIP` → `.toFixed(3)` (e.g. `.321`)
+- Columns containing `wRC+` → round to nearest integer
+
+**Pitchers:**
+- Columns containing `ERA`, `FIP`, `WHIP`, `HR/9`, `K/9` → `.toFixed(2)`
+- Columns containing `BABIP` → `.toFixed(3)`
+
+## 3. Section dividers
+Add a thicker left border (`border-l-2 border-border`) on the first column of each section transition:
+- First YTD column (after the value columns)
+- First ROS column
+- First BL column
+
+Detect section by checking if the column name starts with `YTD_`, `ROS_`, `BL_` and whether the previous visible column belongs to a different section. Apply the border class to both `TableHead` and `TableCell`.
 
 ## Files changed
-- `src/pages/Rosters.tsx` — all three changes in this single file.
+- `src/pages/Rosters.tsx` — column reorder, formatCell rounding, section divider logic
 
