@@ -251,11 +251,15 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
 
   const sortedData = useMemo(() => {
     if (!sortCol || !sortDir) return data;
+    const parseNum = (v: string) => {
+      const cleaned = v.replace(/[$,]/g, "").replace(/\((.+)\)/, "-$1").trim();
+      return parseFloat(cleaned);
+    };
     return [...data].sort((a, b) => {
       const aVal = a[sortCol] ?? "";
       const bVal = b[sortCol] ?? "";
-      const aNum = parseFloat(aVal);
-      const bNum = parseFloat(bVal);
+      const aNum = parseNum(aVal);
+      const bNum = parseNum(bVal);
       let cmp: number;
       if (!isNaN(aNum) && !isNaN(bNum)) cmp = aNum - bNum;
       else cmp = aVal.localeCompare(bVal);
