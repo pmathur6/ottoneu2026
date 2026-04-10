@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings2, X } from "lucide-react";
+import { Settings2, X, ChevronDown, ChevronRight } from "lucide-react";
 import {
   Popover, PopoverTrigger, PopoverContent,
 } from "@/components/ui/popover";
@@ -232,6 +232,7 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState(false);
 
   const handleSort = useCallback((col: string) => {
     if (sortCol !== col) { setSortCol(col); setSortDir("asc"); }
@@ -251,11 +252,15 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
 
   const sortedData = useMemo(() => {
     if (!sortCol || !sortDir) return data;
+    const parseNum = (v: string) => {
+      const cleaned = v.replace(/[$,]/g, "").replace(/\((.+)\)/, "-$1").trim();
+      return parseFloat(cleaned);
+    };
     return [...data].sort((a, b) => {
       const aVal = a[sortCol] ?? "";
       const bVal = b[sortCol] ?? "";
-      const aNum = parseFloat(aVal);
-      const bNum = parseFloat(bVal);
+      const aNum = parseNum(aVal);
+      const bNum = parseNum(bVal);
       let cmp: number;
       if (!isNaN(aNum) && !isNaN(bNum)) cmp = aNum - bNum;
       else cmp = aVal.localeCompare(bVal);
@@ -298,27 +303,36 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <h2 className="text-lg font-semibold text-muted-foreground uppercase tracking-wider">{title}</h2>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7">
-              <Settings2 className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="max-h-80 overflow-y-auto">
-            {columns.map(col => (
-              <DropdownMenuCheckboxItem
-                key={col}
-                checked={!hiddenCols.has(col)}
-                disabled={STICKY_COLS.has(col)}
-                onCheckedChange={() => toggleCol(col)}
-              >
-                {col}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <button
+          onClick={() => setCollapsed(c => !c)}
+          className="flex items-center gap-1 text-lg font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+        >
+          {collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+          {title}
+        </button>
+        {!collapsed && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7">
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-h-80 overflow-y-auto">
+              {columns.map(col => (
+                <DropdownMenuCheckboxItem
+                  key={col}
+                  checked={!hiddenCols.has(col)}
+                  disabled={STICKY_COLS.has(col)}
+                  onCheckedChange={() => toggleCol(col)}
+                >
+                  {col}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
+      {!collapsed && (
       <div className="rounded-lg border bg-card overflow-hidden">
         <div className="overflow-x-auto relative">
           <Table>
@@ -400,6 +414,7 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
           </Table>
         </div>
       </div>
+      )}
     </div>
   );
 }
