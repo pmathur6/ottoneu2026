@@ -232,6 +232,7 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState(false);
 
   const handleSort = useCallback((col: string) => {
     if (sortCol !== col) { setSortCol(col); setSortDir("asc"); }
