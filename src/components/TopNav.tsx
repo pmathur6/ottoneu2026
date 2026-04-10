@@ -9,7 +9,7 @@ const links = [
 const TopNav = () => (
   <nav className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
     <div className="container flex items-center h-14 gap-8">
-      <span className="text-primary font-bold text-lg tracking-tight mr-4">⚾ FBB Hub</span>
+      <span className="text-primary font-bold text-lg tracking-tight mr-4">⚾ Ottoneu</span>
       {links.map(l => (
         <NavLink
           key={l.to}
