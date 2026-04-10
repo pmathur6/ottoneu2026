@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 const POSITIONS = ["Util", "C", "1B", "2B", "SS", "3B", "OF", "SP", "RP"];
 
 const HITTER_COLS = [
-  "PlayerName", "Pos", "Roster",
+  "PlayerName", "Positions", "Roster",
   "Total WAR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason",
   "YTD_G", "YTD_PA", "YTD_HR", "YTD_R", "YTD_OBP", "YTD_SLG",
   "YTD_wOBA", "YTD_xwOBA", "YTD_AVG", "YTD_BABIP", "YTD_wRC+",
@@ -28,7 +28,7 @@ const HITTER_COLS = [
 ];
 
 const PITCHER_COLS = [
-  "PlayerName", "Pos", "Roster",
+  "PlayerName", "Positions", "Roster",
   "Total WAR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason",
   "YTD_IP", "YTD_ERA", "YTD_SO", "YTD_WHIP", "YTD_HR/9", "YTD_K/9",
   "YTD_FIP", "YTD_xFIP", "YTD_xERA", "YTD_BABIP",
@@ -37,7 +37,7 @@ const PITCHER_COLS = [
 ];
 
 // Sticky columns: PlayerName, Pos, Roster
-const STICKY_COLS = new Set(["PlayerName", "Pos", "Roster"]);
+const STICKY_COLS = new Set(["PlayerName", "Positions", "Roster"]);
 
 function getWarColor(val: number): string {
   if (val >= 5) return "text-war-purple font-bold";
@@ -159,7 +159,7 @@ const Rosters = () => {
     }
     if (selectedPositions.length > 0) {
       filtered = filtered.filter(r => {
-        const pos = r["Pos"] || "";
+        const pos = r["Positions"] || "";
         return selectedPositions.some(sp => pos.includes(sp));
       });
     }
