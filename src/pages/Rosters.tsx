@@ -303,27 +303,36 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <h2 className="text-lg font-semibold text-muted-foreground uppercase tracking-wider">{title}</h2>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7">
-              <Settings2 className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="max-h-80 overflow-y-auto">
-            {columns.map(col => (
-              <DropdownMenuCheckboxItem
-                key={col}
-                checked={!hiddenCols.has(col)}
-                disabled={STICKY_COLS.has(col)}
-                onCheckedChange={() => toggleCol(col)}
-              >
-                {col}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <button
+          onClick={() => setCollapsed(c => !c)}
+          className="flex items-center gap-1 text-lg font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+        >
+          {collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+          {title}
+        </button>
+        {!collapsed && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7">
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-h-80 overflow-y-auto">
+              {columns.map(col => (
+                <DropdownMenuCheckboxItem
+                  key={col}
+                  checked={!hiddenCols.has(col)}
+                  disabled={STICKY_COLS.has(col)}
+                  onCheckedChange={() => toggleCol(col)}
+                >
+                  {col}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
+      {!collapsed && (
       <div className="rounded-lg border bg-card overflow-hidden">
         <div className="overflow-x-auto relative">
           <Table>
