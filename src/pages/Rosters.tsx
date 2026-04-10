@@ -414,6 +414,7 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
           </Table>
         </div>
       </div>
+      )}
     </div>
   );
 }
