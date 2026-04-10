@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings2, X } from "lucide-react";
+import { Settings2, X, ChevronDown, ChevronRight } from "lucide-react";
 import {
   Popover, PopoverTrigger, PopoverContent,
 } from "@/components/ui/popover";
