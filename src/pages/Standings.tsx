@@ -210,7 +210,7 @@ function StandingsTable({
                       style={isTeam ? { position: "sticky" as const, left: 0, zIndex: 20 } : {}}
                       className={`text-xs font-semibold text-muted-foreground whitespace-nowrap px-3 ${
                         col === "Total" ? "font-bold text-foreground" : ""
-                      }${isTeam ? " bg-card" : ""}`}
+                      }${isTeam ? " bg-card w-0" : ""}`}
                     >
                       {col}
                     </TableHead>
