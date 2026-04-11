@@ -202,16 +202,20 @@ function StandingsTable({
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                {columns.map(col => (
-                  <TableHead
-                    key={col}
-                    className={`text-xs font-semibold text-muted-foreground whitespace-nowrap px-3 ${
-                      col === "Total" ? "font-bold text-foreground" : ""
-                    }`}
-                  >
-                    {col}
-                  </TableHead>
-                ))}
+                {columns.map(col => {
+                  const isTeam = col === "Team";
+                  return (
+                    <TableHead
+                      key={col}
+                      style={isTeam ? { position: "sticky" as const, left: 0, zIndex: 20 } : {}}
+                      className={`text-xs font-semibold text-muted-foreground whitespace-nowrap px-3 ${
+                        col === "Total" ? "font-bold text-foreground" : ""
+                      }${isTeam ? " bg-card" : ""}`}
+                    >
+                      {col}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -239,12 +243,14 @@ function StandingsTable({
                         const isTotal = isRankings && col === "Total";
                         const colorClass = isCat ? getRankColor(num, totalTeams) : "";
 
+                        const isTeam = col === "Team";
                         return (
                           <TableCell
                             key={col}
+                            style={isTeam ? { position: "sticky" as const, left: 0, zIndex: 10 } : {}}
                             className={`whitespace-nowrap px-3 py-2 text-sm font-mono ${colorClass} ${
                               isTotal ? "font-bold" : ""
-                            } ${col === "Team" ? "font-sans font-medium" : ""}`}
+                            } ${isTeam ? "font-sans font-medium bg-card" : ""}`}
                           >
                             {val}
                           </TableCell>

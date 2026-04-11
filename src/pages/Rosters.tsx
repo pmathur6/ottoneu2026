@@ -37,7 +37,7 @@ const PITCHER_COLS = [
 ];
 
 // Sticky columns: PlayerName, Pos, Roster
-const STICKY_COLS = new Set(["PlayerName", "Positions", "Roster"]);
+const STICKY_COLS = new Set(["PlayerName", "Positions"]);
 
 function getWarColor(val: number): string {
   if (val >= 5) return "text-war-purple font-bold";
