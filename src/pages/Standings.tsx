@@ -175,13 +175,24 @@ function StandingsTable({
   columns,
   data,
   isRankings = false,
+  sortByTotal = false,
 }: {
   title: string;
   columns: string[];
   data: Record<string, string>[];
   isRankings?: boolean;
+  sortByTotal?: boolean;
 }) {
   const totalTeams = data.length;
+
+  const sortedData = useMemo(() => {
+    if (!sortByTotal) return data;
+    return [...data].sort((a, b) => {
+      const aVal = parseFloat(a["Total"] ?? "0");
+      const bVal = parseFloat(b["Total"] ?? "0");
+      return bVal - aVal; // highest total first (rank 12 = best)
+    });
+  }, [data, sortByTotal]);
 
   return (
     <div className="space-y-2">
