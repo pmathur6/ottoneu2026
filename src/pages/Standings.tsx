@@ -250,7 +250,7 @@ function StandingsTable({
                             style={isTeam ? { position: "sticky" as const, left: 0, zIndex: 10 } : {}}
                             className={`whitespace-nowrap px-3 py-2 text-sm font-mono ${colorClass} ${
                               isTotal ? "font-bold" : ""
-                            } ${isTeam ? "font-sans font-medium bg-card" : ""}`}
+                            } ${isTeam ? `font-sans font-medium bg-card ${isYoshi ? "ring-1 ring-standings-gold ring-inset" : ""}` : ""}`}
                           >
                             {val}
                           </TableCell>
