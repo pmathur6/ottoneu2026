@@ -16,8 +16,8 @@ const CATEGORY_COLS = ["R", "HR", "OBP", "SLG", "ERA", "K", "WHIP", "HR9"];
 // But we color based on rank value: rank 1-4 = top (green), 9-12 = bottom (red)
 // Actually rankings: lower number = better rank. So top 4 = values 1-4 green, bottom 4 = 9-12 red
 function getRankColor(val: number, totalTeams: number): string {
-  if (val <= 4) return "text-standings-green";
-  if (val > totalTeams - 4) return "text-standings-red";
+  if (val >= totalTeams - 3) return "text-standings-green";
+  if (val <= 4) return "text-standings-red";
   return "";
 }
 
@@ -153,8 +153,8 @@ const Standings = () => {
       <section className="space-y-4">
         <h2 className="text-xl font-semibold tracking-tight">Live Standings</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <StandingsTable title="Live Stats" columns={LIVE_STATS_COLS} data={liveStats} />
           <StandingsTable title="Live Rankings" columns={LIVE_RANK_COLS} data={liveRankings} isRankings />
+          <StandingsTable title="Live Stats" columns={LIVE_STATS_COLS} data={liveStats} />
         </div>
       </section>
 
@@ -162,8 +162,8 @@ const Standings = () => {
       <section className="space-y-4">
         <h2 className="text-xl font-semibold tracking-tight">Projected Standings</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <StandingsTable title="EOS Rankings" columns={eosRankCols} data={eosRankings} isRankings sortByTotal />
           <StandingsTable title="EOS Stats" columns={eosStatsCols} data={eosStats} />
-          <StandingsTable title="EOS Rankings" columns={eosRankCols} data={eosRankings} isRankings />
         </div>
       </section>
     </div>
