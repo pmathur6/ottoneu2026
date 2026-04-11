@@ -215,14 +215,14 @@ function StandingsTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.length === 0 ? (
+              {sortedData.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={columns.length} className="text-center text-muted-foreground py-8">
                     No data available.
                   </TableCell>
                 </TableRow>
               ) : (
-                data.map((row, i) => {
+                sortedData.map((row, i) => {
                   const teamName = row["Team"] ?? "";
                   const isYoshi = teamName.toLowerCase().includes("yoshi");
                   return (
