@@ -9,3 +9,10 @@ export async function fetchSheet(tabName: string): Promise<Record<string, string
   const [headers, ...rows] = values as string[][];
   return rows.map(row => Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ""])));
 }
+
+export async function fetchSheetRange(tabName: string, range: string): Promise<string[][]> {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(tabName)}!${range}?key=${API_KEY}`;
+  const res = await fetch(url);
+  const { values } = await res.json();
+  return (values as string[][]) ?? [];
+}

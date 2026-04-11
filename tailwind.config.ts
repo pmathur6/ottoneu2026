@@ -65,6 +65,11 @@ export default {
         },
         positive: "hsl(var(--positive))",
         negative: "hsl(var(--negative))",
+        standings: {
+          green: "hsl(var(--standings-green))",
+          red: "hsl(var(--standings-red))",
+          gold: "hsl(var(--standings-gold))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
