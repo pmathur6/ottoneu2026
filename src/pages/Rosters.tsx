@@ -20,7 +20,7 @@ const POSITIONS = ["Util", "C", "1B", "2B", "SS", "3B", "OF", "SP", "RP"];
 
 const HITTER_COLS = [
   "PlayerName", "Positions", "Roster",
-  "Total WAR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason",
+  "Total VALOR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason",
   "YTD_G", "YTD_PA", "YTD_HR", "YTD_R", "YTD_OBP", "YTD_SLG",
   "YTD_wOBA", "YTD_xwOBA", "YTD_AVG", "YTD_BABIP", "YTD_wRC+",
   "ROS_G", "ROS_PA", "ROS_HR", "ROS_R", "ROS_OBP", "ROS_SLG", "ROS_wRC+",
@@ -29,7 +29,7 @@ const HITTER_COLS = [
 
 const PITCHER_COLS = [
   "PlayerName", "Positions", "Roster",
-  "Total WAR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason",
+  "Total VALOR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason",
   "YTD_IP", "YTD_ERA", "YTD_SO", "YTD_WHIP", "YTD_HR/9", "YTD_K/9",
   "YTD_FIP", "YTD_xFIP", "YTD_xERA", "YTD_BABIP",
   "ROS_IP", "ROS_SO", "ROS_ERA", "ROS_WHIP", "ROS_HR/9",
