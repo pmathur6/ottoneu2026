@@ -24,12 +24,23 @@ interface Props {
 export default function TradeBasket({
   teamA, teamB, givesA, givesB, onRemove, onSimulate, canSimulate,
 }: Props) {
+  // VALOR sums per-row (Ohtani's hitter row holds Hitter WAR portion, pitcher row holds Pitcher WAR portion — both contribute).
   const sumValor = (players: Player[]) =>
     players.reduce((s, p) => s + num(p["Total WAR"]), 0);
-  const sumSalary = (players: Player[]) =>
-    players.reduce((s, p) => s + num(p["Current Salary"]), 0);
-  const sumSurplus = (players: Player[]) =>
-    players.reduce((s, p) => s + num(p["Surplus Value"]), 0);
+  // Salary / Surplus / EV are player-level totals — dedupe by playerid so dual-eligible players (e.g. Ohtani) are counted once.
+  const sumUnique = (players: Player[], col: string) => {
+    const seen = new Set<string>();
+    let total = 0;
+    for (const p of players) {
+      const id = p["playerid"];
+      if (seen.has(id)) continue;
+      seen.add(id);
+      total += num(p[col]);
+    }
+    return total;
+  };
+  const sumSalary = (players: Player[]) => sumUnique(players, "Current Salary");
+  const sumSurplus = (players: Player[]) => sumUnique(players, "Surplus Value");
 
   const valorA = sumValor(givesA);
   const valorB = sumValor(givesB);
