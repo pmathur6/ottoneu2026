@@ -39,7 +39,7 @@ const PITCHER_COLS = [
 // Sticky columns: PlayerName, Pos, Roster
 const STICKY_COLS = new Set(["PlayerName", "Positions"]);
 
-function getWarColor(val: number): string {
+function getValorColor(val: number): string {
   if (val >= 5) return "text-war-purple font-bold";
   if (val >= 2) return "text-war-blue font-semibold";
   if (val >= 0) return "text-war-gray";
@@ -55,7 +55,7 @@ function getValueColor(val: number): string {
 function formatCell(col: string, value: string) {
   const num = parseFloat(value);
   if (col === "Total WAR" && !isNaN(num)) {
-    return <span className={getWarColor(num)}>{value}</span>;
+    return <span className={getValorColor(num)}>{value}</span>;
   }
   if ((col === "Surplus Value" || col === "Chg. vs. Preseason") && !isNaN(num)) {
     return <span className={getValueColor(num)}>{value}</span>;
@@ -325,7 +325,7 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
                   disabled={STICKY_COLS.has(col)}
                   onCheckedChange={() => toggleCol(col)}
                 >
-                  {col}
+                  {col === "Roster" ? "Team" : col === "Total WAR" ? "Total VALOR" : col}
                 </DropdownMenuCheckboxItem>
               ))}
             </DropdownMenuContent>
@@ -369,7 +369,7 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
                       className={`text-xs font-semibold text-muted-foreground whitespace-nowrap px-3 cursor-pointer select-none hover:text-foreground transition-colors${isDivider ? " border-l-2 border-border" : ""}${isSticky ? " bg-card" : ""}`}
                       onClick={() => handleSort(col)}
                     >
-                      {col === "Roster" ? "Team" : col}
+                      {col === "Roster" ? "Team" : col === "Total WAR" ? "Total VALOR" : col}
                       {sortCol === col && (
                         <span className="ml-1">{sortDir === "asc" ? "▲" : "▼"}</span>
                       )}
