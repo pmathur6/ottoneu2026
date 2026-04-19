@@ -24,12 +24,23 @@ interface Props {
 export default function TradeBasket({
   teamA, teamB, givesA, givesB, onRemove, onSimulate, canSimulate,
 }: Props) {
+  // VALOR sums per-row (Ohtani's hitter row holds Hitter WAR portion, pitcher row holds Pitcher WAR portion — both contribute).
   const sumValor = (players: Player[]) =>
-    players.reduce((s, p) => s + num(p["WAR"]), 0);
-  const sumSalary = (players: Player[]) =>
-    players.reduce((s, p) => s + num(p["Current Salary"]), 0);
-  const sumSurplus = (players: Player[]) =>
-    players.reduce((s, p) => s + num(p["Surplus Value"]), 0);
+    players.reduce((s, p) => s + num(p["Total WAR"]), 0);
+  // Salary / Surplus / EV are player-level totals — dedupe by playerid so dual-eligible players (e.g. Ohtani) are counted once.
+  const sumUnique = (players: Player[], col: string) => {
+    const seen = new Set<string>();
+    let total = 0;
+    for (const p of players) {
+      const id = p["playerid"];
+      if (seen.has(id)) continue;
+      seen.add(id);
+      total += num(p[col]);
+    }
+    return total;
+  };
+  const sumSalary = (players: Player[]) => sumUnique(players, "Current Salary");
+  const sumSurplus = (players: Player[]) => sumUnique(players, "Surplus Value");
 
   const valorA = sumValor(givesA);
   const valorB = sumValor(givesB);
@@ -102,7 +113,7 @@ function BasketSide({
             <li key={p["playerid"]} className="flex items-center justify-between gap-2 text-sm py-1 border-b border-border/40 last:border-0">
               <span className="font-medium truncate">{p["PlayerName"]}</span>
               <div className="flex items-center gap-3 text-xs font-mono shrink-0">
-                <span>{num(p["WAR"]).toFixed(1)} V</span>
+                <span>{num(p["Total WAR"]).toFixed(1)} V</span>
                 <span className="text-muted-foreground">{fmtMoney(num(p["Current Salary"]))}</span>
                 <button onClick={() => onRemove(p["playerid"])} className="text-muted-foreground hover:text-destructive">
                   <X className="h-3 w-3" />
