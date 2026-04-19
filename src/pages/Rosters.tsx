@@ -20,7 +20,7 @@ const POSITIONS = ["Util", "C", "1B", "2B", "SS", "3B", "OF", "SP", "RP"];
 
 const HITTER_COLS = [
   "PlayerName", "Positions", "Roster",
-  "Total VALOR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason",
+  "Total WAR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason",
   "YTD_G", "YTD_PA", "YTD_HR", "YTD_R", "YTD_OBP", "YTD_SLG",
   "YTD_wOBA", "YTD_xwOBA", "YTD_AVG", "YTD_BABIP", "YTD_wRC+",
   "ROS_G", "ROS_PA", "ROS_HR", "ROS_R", "ROS_OBP", "ROS_SLG", "ROS_wRC+",
@@ -29,7 +29,7 @@ const HITTER_COLS = [
 
 const PITCHER_COLS = [
   "PlayerName", "Positions", "Roster",
-  "Total VALOR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason",
+  "Total WAR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason",
   "YTD_IP", "YTD_ERA", "YTD_SO", "YTD_WHIP", "YTD_HR/9", "YTD_K/9",
   "YTD_FIP", "YTD_xFIP", "YTD_xERA", "YTD_BABIP",
   "ROS_IP", "ROS_SO", "ROS_ERA", "ROS_WHIP", "ROS_HR/9",
@@ -369,7 +369,7 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
                       className={`text-xs font-semibold text-muted-foreground whitespace-nowrap px-3 cursor-pointer select-none hover:text-foreground transition-colors${isDivider ? " border-l-2 border-border" : ""}${isSticky ? " bg-card" : ""}`}
                       onClick={() => handleSort(col)}
                     >
-                      {col === "Roster" ? "Team" : col}
+                      {col === "Roster" ? "Team" : col === "Total WAR" ? "Total VALOR" : col}
                       {sortCol === col && (
                         <span className="ml-1">{sortDir === "asc" ? "▲" : "▼"}</span>
                       )}
