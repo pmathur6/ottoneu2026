@@ -24,10 +24,8 @@ interface Props {
 export default function TradeBasket({
   teamA, teamB, givesA, givesB, onRemove, onSimulate, canSimulate,
 }: Props) {
-  // VALOR sums per-row (Ohtani's hitter row holds Hitter WAR portion, pitcher row holds Pitcher WAR portion — both contribute).
-  const sumValor = (players: Player[]) =>
-    players.reduce((s, p) => s + num(p["Total WAR"]), 0);
-  // Salary / Surplus / EV are player-level totals — dedupe by playerid so dual-eligible players (e.g. Ohtani) are counted once.
+  // All player-level totals (VALOR / Salary / Surplus) are duplicated when a dual-eligible
+  // player (e.g. Ohtani) appears on both the hitter and pitcher rosters — dedupe by playerid.
   const sumUnique = (players: Player[], col: string) => {
     const seen = new Set<string>();
     let total = 0;
@@ -39,6 +37,7 @@ export default function TradeBasket({
     }
     return total;
   };
+  const sumValor = (players: Player[]) => sumUnique(players, "Total WAR");
   const sumSalary = (players: Player[]) => sumUnique(players, "Current Salary");
   const sumSurplus = (players: Player[]) => sumUnique(players, "Surplus Value");
 
