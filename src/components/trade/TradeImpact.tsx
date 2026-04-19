@@ -71,7 +71,7 @@ function TeamImpact({ name, pre, post }: { name: string; pre: OptimizedTeam; pos
           ["K", pre.categories.K, post.categories.K, 0, true],
           ["ERA", pre.categories.ERA, post.categories.ERA, 2, false],
           ["WHIP", pre.categories.WHIP, post.categories.WHIP, 3, false],
-          ["HR/9", pre.categories["HR/9"], pre.categories["HR/9"] && post.categories["HR/9"], 2, false],
+          ["HR/9", pre.categories["HR/9"], post.categories["HR/9"], 2, false],
         ] as Array<[string, number, number, number, boolean]>}
       />
     </div>
