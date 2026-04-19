@@ -39,7 +39,7 @@ const PITCHER_COLS = [
 // Sticky columns: PlayerName, Pos, Roster
 const STICKY_COLS = new Set(["PlayerName", "Positions"]);
 
-function getWarColor(val: number): string {
+function getValorColor(val: number): string {
   if (val >= 5) return "text-war-purple font-bold";
   if (val >= 2) return "text-war-blue font-semibold";
   if (val >= 0) return "text-war-gray";
@@ -55,7 +55,7 @@ function getValueColor(val: number): string {
 function formatCell(col: string, value: string) {
   const num = parseFloat(value);
   if (col === "Total WAR" && !isNaN(num)) {
-    return <span className={getWarColor(num)}>{value}</span>;
+    return <span className={getValorColor(num)}>{value}</span>;
   }
   if ((col === "Surplus Value" || col === "Chg. vs. Preseason") && !isNaN(num)) {
     return <span className={getValueColor(num)}>{value}</span>;
