@@ -104,7 +104,7 @@ function optimizeHitters(hitters: Player[], caps: PositionCaps): HitterTotals {
         return remaining > 0 && isEligibleHitter(p, pos);
       })
       .map(p => {
-        const playerValor = num(p["WAR"]);
+        const playerValor = num(p["Total WAR"]);
         const blG = num(p["BL_G"]);
         const valorPerG = blG > 0 ? playerValor / blG : 0;
         return { p, valorPerG };
@@ -132,7 +132,7 @@ function optimizeHitters(hitters: Player[], caps: PositionCaps): HitterTotals {
     const blG = num(p["BL_G"]);
     if (blG <= 0) continue;
     const share = g / blG;
-    const playerValor = num(p["WAR"]);
+    const playerValor = num(p["Total WAR"]);
     const blPA = num(p["BL_PA"]);
     const blHR = num(p["BL_HR"]);
     const blR = num(p["BL_R"]);
@@ -163,7 +163,7 @@ function optimizeHitters(hitters: Player[], caps: PositionCaps): HitterTotals {
 function optimizePitchers(pitchers: Player[], maxIP: number): PitcherTotals {
   const ranked = pitchers
     .map(p => {
-      const playerValor = num(p["WAR"]);
+      const playerValor = num(p["Total WAR"]);
       const ip = num(p["BL_IP"]);
       const valorPerIP = ip > 0 ? playerValor / ip : 0;
       return { p, valorPerIP, ip };
@@ -183,7 +183,7 @@ function optimizePitchers(pitchers: Player[], maxIP: number): PitcherTotals {
     if (cap <= 0) break;
     const used = Math.min(cap, ip);
     const share = used / ip;
-    const playerValor = num(p["WAR"]);
+    const playerValor = num(p["Total WAR"]);
     const k = num(p["BL_SO"]);
     const era = num(p["BL_ERA"]);
     const whip = num(p["BL_WHIP"]);

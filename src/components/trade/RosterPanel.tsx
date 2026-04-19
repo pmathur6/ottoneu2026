@@ -146,7 +146,7 @@ function PlayerTable({
                   </TableCell>
                   <TableCell className="font-medium text-sm">{p["PlayerName"]}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{p["Positions"]}</TableCell>
-                  <TableCell className="text-right font-mono text-sm">{num(p["WAR"]).toFixed(1)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm">{num(p["Total WAR"]).toFixed(1)}</TableCell>
                   <TableCell className="text-right font-mono text-sm">{fmtMoney(p["Current Salary"])}</TableCell>
                   <TableCell className="text-right font-mono text-sm">{fmtMoney(p["Expected Value"])}</TableCell>
                   <TableCell className={`text-right font-mono text-sm ${

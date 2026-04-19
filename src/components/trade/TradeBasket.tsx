@@ -25,7 +25,7 @@ export default function TradeBasket({
   teamA, teamB, givesA, givesB, onRemove, onSimulate, canSimulate,
 }: Props) {
   const sumValor = (players: Player[]) =>
-    players.reduce((s, p) => s + num(p["WAR"]), 0);
+    players.reduce((s, p) => s + num(p["Total WAR"]), 0);
   const sumSalary = (players: Player[]) =>
     players.reduce((s, p) => s + num(p["Current Salary"]), 0);
   const sumSurplus = (players: Player[]) =>
@@ -102,7 +102,7 @@ function BasketSide({
             <li key={p["playerid"]} className="flex items-center justify-between gap-2 text-sm py-1 border-b border-border/40 last:border-0">
               <span className="font-medium truncate">{p["PlayerName"]}</span>
               <div className="flex items-center gap-3 text-xs font-mono shrink-0">
-                <span>{num(p["WAR"]).toFixed(1)} V</span>
+                <span>{num(p["Total WAR"]).toFixed(1)} V</span>
                 <span className="text-muted-foreground">{fmtMoney(num(p["Current Salary"]))}</span>
                 <button onClick={() => onRemove(p["playerid"])} className="text-muted-foreground hover:text-destructive">
                   <X className="h-3 w-3" />
