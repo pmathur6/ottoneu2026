@@ -325,7 +325,7 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
                   disabled={STICKY_COLS.has(col)}
                   onCheckedChange={() => toggleCol(col)}
                 >
-                  {col}
+                  {col === "Roster" ? "Team" : col === "Total WAR" ? "Total VALOR" : col}
                 </DropdownMenuCheckboxItem>
               ))}
             </DropdownMenuContent>
