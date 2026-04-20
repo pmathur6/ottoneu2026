@@ -207,6 +207,10 @@ const Trade = () => {
         teamB={teamB}
         givesA={givesA}
         givesB={givesB}
+        loanAtoB={loanAtoB}
+        loanBtoA={loanBtoA}
+        onLoanAChange={setLoanAtoB}
+        onLoanBChange={setLoanBtoA}
         onRemove={togglePlayer}
         onSimulate={onSimulate}
         canSimulate={canSimulate}
