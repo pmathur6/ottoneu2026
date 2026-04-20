@@ -69,6 +69,7 @@ export default function RosterPanel({
             players={teamHitters}
             playingTimeKey="BL_G"
             playingTimeLabel="G"
+            statCols={HITTER_STATS}
             selectedIds={selectedIds}
             onToggle={onTogglePlayer}
           />
@@ -77,6 +78,7 @@ export default function RosterPanel({
             players={teamPitchers}
             playingTimeKey="BL_IP"
             playingTimeLabel="IP"
+            statCols={PITCHER_STATS}
             selectedIds={selectedIds}
             onToggle={onTogglePlayer}
           />
