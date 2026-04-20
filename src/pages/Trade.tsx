@@ -52,6 +52,8 @@ const Trade = () => {
   const [teamA, setTeamA] = useState("");
   const [teamB, setTeamB] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [loanAtoB, setLoanAtoB] = useState(0);
+  const [loanBtoA, setLoanBtoA] = useState(0);
   const [simulated, setSimulated] = useState<{ a: string; b: string; ids: string[] } | null>(null);
 
   const togglePlayer = useCallback((id: string) => {
