@@ -1,4 +1,6 @@
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { X } from "lucide-react";
 import type { Player } from "@/lib/tradeOptimizer";
 
@@ -16,13 +18,19 @@ interface Props {
   teamB: string;
   givesA: Player[]; // players Team A is giving up
   givesB: Player[];
+  loanAtoB: number; // dollars Team A loans to Team B
+  loanBtoA: number;
+  onLoanAChange: (n: number) => void;
+  onLoanBChange: (n: number) => void;
   onRemove: (id: string) => void;
   onSimulate: () => void;
   canSimulate: boolean;
 }
 
 export default function TradeBasket({
-  teamA, teamB, givesA, givesB, onRemove, onSimulate, canSimulate,
+  teamA, teamB, givesA, givesB,
+  loanAtoB, loanBtoA, onLoanAChange, onLoanBChange,
+  onRemove, onSimulate, canSimulate,
 }: Props) {
   // All player-level totals (VALOR / Salary / Surplus) are duplicated when a dual-eligible
   // player (e.g. Ohtani) appears on both the hitter and pitcher rosters — dedupe by playerid.
@@ -48,13 +56,18 @@ export default function TradeBasket({
   const surplusA = sumSurplus(givesA);
   const surplusB = sumSurplus(givesB);
 
-  // Net deltas from each team's perspective: receives - gives
+  // Net VALOR is still receives - gives (positive = team gained talent)
   const netValorA = valorB - valorA;
   const netValorB = valorA - valorB;
-  const netSalaryA = salaryB - salaryA;
-  const netSalaryB = salaryA - salaryB;
-  const netSurplusA = surplusB - surplusA;
-  const netSurplusB = surplusA - surplusB;
+
+  // Net Salary: salary traded away - salary gained. Positive = shed payroll.
+  // Loans sent reduce net salary (you're paying that money). Loans received add to net salary.
+  const netSalaryA = salaryA - salaryB - loanAtoB + loanBtoA;
+  const netSalaryB = salaryB - salaryA - loanBtoA + loanAtoB;
+
+  // Net Surplus follows the same sign convention as salary loans.
+  const netSurplusA = surplusB - surplusA - loanAtoB + loanBtoA;
+  const netSurplusB = surplusA - surplusB - loanBtoA + loanAtoB;
 
   return (
     <div className="rounded-lg border bg-card p-4 space-y-4">
@@ -64,6 +77,10 @@ export default function TradeBasket({
           title={`${teamA || "Team A"} gives`}
           players={givesA}
           onRemove={onRemove}
+          loanOut={loanAtoB}
+          loanIn={loanBtoA}
+          onLoanOutChange={onLoanAChange}
+          loanOutLabel={`Loan to ${teamB || "Team B"}`}
           netValor={netValorA}
           netSalary={netSalaryA}
           netSurplus={netSurplusA}
@@ -72,6 +89,10 @@ export default function TradeBasket({
           title={`${teamB || "Team B"} gives`}
           players={givesB}
           onRemove={onRemove}
+          loanOut={loanBtoA}
+          loanIn={loanAtoB}
+          onLoanOutChange={onLoanBChange}
+          loanOutLabel={`Loan to ${teamA || "Team A"}`}
           netValor={netValorB}
           netSalary={netSalaryB}
           netSurplus={netSurplusB}
@@ -90,11 +111,17 @@ export default function TradeBasket({
 }
 
 function BasketSide({
-  title, players, onRemove, netValor, netSalary, netSurplus,
+  title, players, onRemove,
+  loanOut, loanIn, onLoanOutChange, loanOutLabel,
+  netValor, netSalary, netSurplus,
 }: {
   title: string;
   players: Player[];
   onRemove: (id: string) => void;
+  loanOut: number;
+  loanIn: number;
+  onLoanOutChange: (n: number) => void;
+  loanOutLabel: string;
   netValor: number;
   netSalary: number;
   netSurplus: number;
@@ -122,6 +149,36 @@ function BasketSide({
           ))}
         </ul>
       )}
+
+      <div className="border-t border-border pt-2 space-y-2">
+        <div className="flex items-center gap-2">
+          <Label className="text-xs text-muted-foreground flex-1">{loanOutLabel}</Label>
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-muted-foreground">$</span>
+            <Input
+              type="number"
+              min={0}
+              max={400}
+              value={loanOut === 0 ? "" : loanOut}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === "") return onLoanOutChange(0);
+                const n = Math.max(0, Math.min(400, Math.floor(Number(raw))));
+                onLoanOutChange(isNaN(n) ? 0 : n);
+              }}
+              placeholder="0"
+              className="h-7 w-16 text-xs font-mono text-right px-2"
+            />
+          </div>
+        </div>
+        {loanIn > 0 && (
+          <div className="flex justify-between text-xs font-mono text-muted-foreground">
+            <span>Loan received</span>
+            <span>+${loanIn}</span>
+          </div>
+        )}
+      </div>
+
       <div className="border-t border-border pt-2 space-y-1 text-xs font-mono">
         <DeltaRow label="Net VALOR" value={netValor} fmt={(n) => n.toFixed(1)} />
         <DeltaRow label="Net Salary" value={netSalary} fmt={fmtMoney} />

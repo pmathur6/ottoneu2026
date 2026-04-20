@@ -52,6 +52,8 @@ const Trade = () => {
   const [teamA, setTeamA] = useState("");
   const [teamB, setTeamB] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [loanAtoB, setLoanAtoB] = useState(0);
+  const [loanBtoA, setLoanBtoA] = useState(0);
   const [simulated, setSimulated] = useState<{ a: string; b: string; ids: string[] } | null>(null);
 
   const togglePlayer = useCallback((id: string) => {
@@ -89,15 +91,32 @@ const Trade = () => {
     setSimulated(null);
   };
 
+  // Dedupe by playerid for display so dual-eligible players (e.g. Ohtani) only appear once.
+  const dedupe = (players: Player[]) => {
+    const seen = new Set<string>();
+    const out: Player[] = [];
+    for (const p of players) {
+      const id = p["playerid"];
+      if (seen.has(id)) continue;
+      seen.add(id);
+      out.push(p);
+    }
+    return out;
+  };
+
   const givesA = useMemo(() => {
-    return [...allHitters, ...allPitchers].filter(
-      p => selectedIds.has(p["playerid"]) && p["Roster"] === teamA
+    return dedupe(
+      [...allHitters, ...allPitchers].filter(
+        p => selectedIds.has(p["playerid"]) && p["Roster"] === teamA
+      )
     );
   }, [allHitters, allPitchers, selectedIds, teamA]);
 
   const givesB = useMemo(() => {
-    return [...allHitters, ...allPitchers].filter(
-      p => selectedIds.has(p["playerid"]) && p["Roster"] === teamB
+    return dedupe(
+      [...allHitters, ...allPitchers].filter(
+        p => selectedIds.has(p["playerid"]) && p["Roster"] === teamB
+      )
     );
   }, [allHitters, allPitchers, selectedIds, teamB]);
 
@@ -188,6 +207,10 @@ const Trade = () => {
         teamB={teamB}
         givesA={givesA}
         givesB={givesB}
+        loanAtoB={loanAtoB}
+        loanBtoA={loanBtoA}
+        onLoanAChange={setLoanAtoB}
+        onLoanBChange={setLoanBtoA}
         onRemove={togglePlayer}
         onSimulate={onSimulate}
         canSimulate={canSimulate}
