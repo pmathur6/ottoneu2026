@@ -69,6 +69,7 @@ export default function RosterPanel({
             players={teamHitters}
             playingTimeKey="BL_G"
             playingTimeLabel="G"
+            statCols={HITTER_STATS}
             selectedIds={selectedIds}
             onToggle={onTogglePlayer}
           />
@@ -77,6 +78,7 @@ export default function RosterPanel({
             players={teamPitchers}
             playingTimeKey="BL_IP"
             playingTimeLabel="IP"
+            statCols={PITCHER_STATS}
             selectedIds={selectedIds}
             onToggle={onTogglePlayer}
           />
@@ -91,15 +93,33 @@ export default function RosterPanel({
 }
 
 type SortDir = "asc" | "desc";
-type SortKey = "name" | "pos" | "valor" | "salary" | "ev" | "surplus" | "pt";
+type SortKey = "name" | "pos" | "valor" | "salary" | "ev" | "surplus" | "pt" | "stat1" | "stat2" | "stat3" | "stat4" | "stat5";
+
+type StatCol = { key: string; label: string; format: (n: number) => string };
+
+const HITTER_STATS: StatCol[] = [
+  { key: "BL_PA", label: "PA", format: n => Math.round(n).toString() },
+  { key: "BL_HR", label: "HR", format: n => Math.round(n).toString() },
+  { key: "BL_R", label: "R", format: n => Math.round(n).toString() },
+  { key: "BL_OBP", label: "OBP", format: n => n.toFixed(3) },
+  { key: "BL_SLG", label: "SLG", format: n => n.toFixed(3) },
+];
+
+const PITCHER_STATS: StatCol[] = [
+  { key: "BL_SO", label: "SO", format: n => Math.round(n).toString() },
+  { key: "BL_ERA", label: "ERA", format: n => n.toFixed(2) },
+  { key: "BL_WHIP", label: "WHIP", format: n => n.toFixed(2) },
+  { key: "BL_HR/9", label: "HR/9", format: n => n.toFixed(2) },
+];
 
 function PlayerTable({
-  title, players, playingTimeKey, playingTimeLabel, selectedIds, onToggle,
+  title, players, playingTimeKey, playingTimeLabel, statCols, selectedIds, onToggle,
 }: {
   title: string;
   players: Player[];
   playingTimeKey: string;
   playingTimeLabel: string;
+  statCols: StatCol[];
   selectedIds: Set<string>;
   onToggle: (id: string) => void;
 }) {
@@ -116,6 +136,8 @@ function PlayerTable({
     }
   };
 
+  const statSortKeys: SortKey[] = ["stat1", "stat2", "stat3", "stat4", "stat5"];
+
   const sorted = useMemo(() => {
     const getVal = (p: Player): string | number => {
       switch (sortKey) {
@@ -126,6 +148,15 @@ function PlayerTable({
         case "ev": return num(p["Expected Value"]);
         case "surplus": return num(p["Surplus Value"]);
         case "pt": return num(p[playingTimeKey]);
+        case "stat1":
+        case "stat2":
+        case "stat3":
+        case "stat4":
+        case "stat5": {
+          const idx = statSortKeys.indexOf(sortKey);
+          const col = statCols[idx];
+          return col ? num(p[col.key]) : 0;
+        }
       }
     };
     const arr = [...players];
@@ -140,7 +171,9 @@ function PlayerTable({
       return sortDir === "asc" ? an - bn : bn - an;
     });
     return arr;
-  }, [players, sortKey, sortDir, playingTimeKey]);
+  }, [players, sortKey, sortDir, playingTimeKey, statCols]);
+
+  const colSpan = 8 + statCols.length;
 
   return (
     <div className="space-y-1">
@@ -157,12 +190,23 @@ function PlayerTable({
               <SortableHead label="EV" colKey="ev" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right" />
               <SortableHead label="Surplus" colKey="surplus" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right" />
               <SortableHead label={playingTimeLabel} colKey="pt" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right" />
+              {statCols.map((col, i) => (
+                <SortableHead
+                  key={col.key}
+                  label={col.label}
+                  colKey={statSortKeys[i]}
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={handleSort}
+                  align="right"
+                />
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {sorted.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground text-sm py-4">
+                <TableCell colSpan={colSpan} className="text-center text-muted-foreground text-sm py-4">
                   No {title.toLowerCase()}.
                 </TableCell>
               </TableRow>
@@ -202,6 +246,11 @@ function PlayerTable({
                       ? num(p[playingTimeKey]).toFixed(1)
                       : Math.round(num(p[playingTimeKey]))}
                   </TableCell>
+                  {statCols.map(col => (
+                    <TableCell key={col.key} className="text-right font-mono text-sm">
+                      {col.format(num(p[col.key]))}
+                    </TableCell>
+                  ))}
                 </TableRow>
               );
             })}
