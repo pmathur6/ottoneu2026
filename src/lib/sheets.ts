@@ -16,3 +16,11 @@ export async function fetchSheetRange(tabName: string, range: string): Promise<s
   const { values } = await res.json();
   return (values as string[][]) ?? [];
 }
+
+// Fetch raw 2D values for a whole tab (no header normalization).
+export async function fetchSheetRaw(tabName: string): Promise<string[][]> {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(tabName)}?key=${API_KEY}`;
+  const res = await fetch(url);
+  const { values } = await res.json();
+  return (values as string[][]) ?? [];
+}

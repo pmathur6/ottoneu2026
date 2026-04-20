@@ -1,11 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState, useCallback } from "react";
-import { fetchSheet, fetchSheetRange } from "@/lib/sheets";
+import { fetchSheet, fetchSheetRange, fetchSheetRaw } from "@/lib/sheets";
 import { Loader2, AlertCircle } from "lucide-react";
 import RosterPanel from "@/components/trade/RosterPanel";
 import TradeBasket from "@/components/trade/TradeBasket";
 import TradeImpact from "@/components/trade/TradeImpact";
-import { optimizeTeam, parseCaps, type Player } from "@/lib/tradeOptimizer";
+import {
+  optimizeTeam, parseCaps, parseTeamProduction, parseEosStandings,
+  combineFullSeason, computeRotoPoints,
+  type Player, type FullSeasonCategories,
+} from "@/lib/tradeOptimizer";
 
 const Trade = () => {
   const { data: hitters, isLoading: hLoad, error: hErr } = useQuery({
@@ -20,11 +24,18 @@ const Trade = () => {
     queryKey: ["assumptions-caps"],
     queryFn: () => fetchSheetRange("Assumptions", "B1:B125"),
   });
+  const { data: teamProd, isLoading: tpLoad, error: tpErr } = useQuery({
+    queryKey: ["team-production"],
+    queryFn: () => fetchSheetRaw("Team Production"),
+  });
+  const { data: eosStand, isLoading: esLoad, error: esErr } = useQuery({
+    queryKey: ["eos-standings"],
+    queryFn: () => fetchSheetRaw("EOS Standings"),
+  });
 
-  const isLoading = hLoad || pLoad || aLoad;
-  const error = hErr || pErr || aErr;
+  const isLoading = hLoad || pLoad || aLoad || tpLoad || esLoad;
+  const error = hErr || pErr || aErr || tpErr || esErr;
 
-  // Filter out FA
   const allHitters = useMemo<Player[]>(
     () => (hitters ?? []).filter(p => (p["Roster"] || "").trim() !== "FA"),
     [hitters]
@@ -43,11 +54,12 @@ const Trade = () => {
 
   const caps = useMemo(() => {
     if (!assumptions) return null;
-    // fetchSheetRange returns column B values as single-element rows (since range is B1:B125)
-    // Reshape into [empty, B-value] format expected by parseCaps which reads col index 1.
     const reshaped = assumptions.map(row => ["", row[0] ?? ""]);
     return parseCaps(reshaped);
   }, [assumptions]);
+
+  const banked = useMemo(() => teamProd ? parseTeamProduction(teamProd) : null, [teamProd]);
+  const eosBaseline = useMemo(() => eosStand ? parseEosStandings(eosStand) : null, [eosStand]);
 
   const [teamA, setTeamA] = useState("");
   const [teamB, setTeamB] = useState("");
@@ -65,7 +77,6 @@ const Trade = () => {
     setSimulated(null);
   }, []);
 
-  // Reset selections that no longer belong to selected teams when teams change
   const handleTeamAChange = (t: string) => {
     setTeamA(t);
     setSelectedIds(prev => {
@@ -91,7 +102,6 @@ const Trade = () => {
     setSimulated(null);
   };
 
-  // Dedupe by playerid for display so dual-eligible players (e.g. Ohtani) only appear once.
   const dedupe = (players: Player[]) => {
     const seen = new Set<string>();
     const out: Player[] = [];
@@ -104,21 +114,13 @@ const Trade = () => {
     return out;
   };
 
-  const givesA = useMemo(() => {
-    return dedupe(
-      [...allHitters, ...allPitchers].filter(
-        p => selectedIds.has(p["playerid"]) && p["Roster"] === teamA
-      )
-    );
-  }, [allHitters, allPitchers, selectedIds, teamA]);
+  const givesA = useMemo(() => dedupe(
+    [...allHitters, ...allPitchers].filter(p => selectedIds.has(p["playerid"]) && p["Roster"] === teamA)
+  ), [allHitters, allPitchers, selectedIds, teamA]);
 
-  const givesB = useMemo(() => {
-    return dedupe(
-      [...allHitters, ...allPitchers].filter(
-        p => selectedIds.has(p["playerid"]) && p["Roster"] === teamB
-      )
-    );
-  }, [allHitters, allPitchers, selectedIds, teamB]);
+  const givesB = useMemo(() => dedupe(
+    [...allHitters, ...allPitchers].filter(p => selectedIds.has(p["playerid"]) && p["Roster"] === teamB)
+  ), [allHitters, allPitchers, selectedIds, teamB]);
 
   const canSimulate = !!teamA && !!teamB && teamA !== teamB && (givesA.length > 0 || givesB.length > 0);
 
@@ -126,11 +128,30 @@ const Trade = () => {
     setSimulated({ a: teamA, b: teamB, ids: Array.from(selectedIds) });
   };
 
+  // ===================================================================
+  // Build full season projected stats for all 12 teams.
+  // Baseline = EOS Standings raw stats (already full-season projection).
+  // Post-trade = recompute Team A & Team B using banked + ROS optimizer; other 10 unchanged.
+  // ===================================================================
   const impact = useMemo(() => {
-    if (!simulated || !caps) return null;
+    if (!simulated || !caps || !banked || !eosBaseline) return null;
     const { a, b, ids } = simulated;
     const idSet = new Set(ids);
 
+    // Pre-trade baseline: every team uses EOS Standings as-is.
+    const beforeStats: Record<string, FullSeasonCategories> = { ...eosBaseline };
+
+    // Helper: compute full season stats for one team given its hitter/pitcher rosters.
+    const fullSeasonFor = (teamName: string, hRoster: Player[], pRoster: Player[]): FullSeasonCategories => {
+      const teamBanked = banked[teamName] ?? {
+        hitting: { R: 0, HR: 0, AB: 0, obpNum: 0, slgNum: 0, paWeight: 0 },
+        pitching: { IP: 0, K: 0, eraNum: 0, whipNum: 0, hr9Num: 0 },
+      };
+      const ros = optimizeTeam(hRoster, pRoster, caps);
+      return combineFullSeason(teamBanked, ros);
+    };
+
+    // Pre-trade rosters
     const teamHittersA = allHitters.filter(p => p["Roster"] === a);
     const teamPitchersA = allPitchers.filter(p => p["Roster"] === a);
     const teamHittersB = allHitters.filter(p => p["Roster"] === b);
@@ -148,13 +169,31 @@ const Trade = () => {
     const postHittersB = teamHittersB.filter(p => !idSet.has(p["playerid"])).concat(hMovingA);
     const postPitchersB = teamPitchersB.filter(p => !idSet.has(p["playerid"])).concat(pMovingA);
 
+    // After-trade stats: replace only A and B in baseline.
+    const afterStats: Record<string, FullSeasonCategories> = { ...beforeStats };
+    afterStats[a] = fullSeasonFor(a, postHittersA, postPitchersA);
+    afterStats[b] = fullSeasonFor(b, postHittersB, postPitchersB);
+
+    const rotoBefore = computeRotoPoints(beforeStats);
+    const rotoAfter = computeRotoPoints(afterStats);
+
     return {
-      preA: optimizeTeam(teamHittersA, teamPitchersA, caps),
-      postA: optimizeTeam(postHittersA, postPitchersA, caps),
-      preB: optimizeTeam(teamHittersB, teamPitchersB, caps),
-      postB: optimizeTeam(postHittersB, postPitchersB, caps),
+      teamA: {
+        name: a,
+        before: beforeStats[a] ?? { R: 0, HR: 0, OBP: 0, SLG: 0, K: 0, ERA: 0, WHIP: 0, HR9: 0 },
+        after: afterStats[a],
+        rotoBefore: rotoBefore[a],
+        rotoAfter: rotoAfter[a],
+      },
+      teamB: {
+        name: b,
+        before: beforeStats[b] ?? { R: 0, HR: 0, OBP: 0, SLG: 0, K: 0, ERA: 0, WHIP: 0, HR9: 0 },
+        after: afterStats[b],
+        rotoBefore: rotoBefore[b],
+        rotoAfter: rotoAfter[b],
+      },
     };
-  }, [simulated, caps, allHitters, allPitchers]);
+  }, [simulated, caps, banked, eosBaseline, allHitters, allPitchers]);
 
   if (isLoading) {
     return (
@@ -217,14 +256,7 @@ const Trade = () => {
       />
 
       {impact && simulated && (
-        <TradeImpact
-          teamAName={simulated.a}
-          teamBName={simulated.b}
-          preA={impact.preA}
-          postA={impact.postA}
-          preB={impact.preB}
-          postB={impact.postB}
-        />
+        <TradeImpact teamA={impact.teamA} teamB={impact.teamB} />
       )}
     </div>
   );
