@@ -91,7 +91,24 @@ export default function RosterPanel({
 }
 
 type SortDir = "asc" | "desc";
-type SortKey = "name" | "pos" | "valor" | "salary" | "ev" | "surplus" | "pt";
+type SortKey = "name" | "pos" | "valor" | "salary" | "ev" | "surplus" | "pt" | "stat1" | "stat2" | "stat3" | "stat4" | "stat5";
+
+type StatCol = { key: string; label: string; format: (n: number) => string };
+
+const HITTER_STATS: StatCol[] = [
+  { key: "BL_PA", label: "PA", format: n => Math.round(n).toString() },
+  { key: "BL_HR", label: "HR", format: n => Math.round(n).toString() },
+  { key: "BL_R", label: "R", format: n => Math.round(n).toString() },
+  { key: "BL_OBP", label: "OBP", format: n => n.toFixed(3) },
+  { key: "BL_SLG", label: "SLG", format: n => n.toFixed(3) },
+];
+
+const PITCHER_STATS: StatCol[] = [
+  { key: "BL_SO", label: "SO", format: n => Math.round(n).toString() },
+  { key: "BL_ERA", label: "ERA", format: n => n.toFixed(2) },
+  { key: "BL_WHIP", label: "WHIP", format: n => n.toFixed(2) },
+  { key: "BL_HR/9", label: "HR/9", format: n => n.toFixed(2) },
+];
 
 function PlayerTable({
   title, players, playingTimeKey, playingTimeLabel, selectedIds, onToggle,
