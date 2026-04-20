@@ -1,113 +1,149 @@
-import type { OptimizedTeam } from "@/lib/tradeOptimizer";
+import type { FullSeasonCategories, Category } from "@/lib/tradeOptimizer";
+import { ALL_CATS, HIGHER_BETTER } from "@/lib/tradeOptimizer";
 
-interface Props {
-  teamAName: string;
-  teamBName: string;
-  preA: OptimizedTeam;
-  postA: OptimizedTeam;
-  preB: OptimizedTeam;
-  postB: OptimizedTeam;
+interface TeamPayload {
+  name: string;
+  before: FullSeasonCategories;
+  after: FullSeasonCategories;
+  rotoBefore: Record<Category, number>;
+  rotoAfter: Record<Category, number>;
 }
 
-const fmt = (n: number, decimals = 1) => n.toFixed(decimals);
-const fmtRate = (n: number) => n.toFixed(3);
+interface Props {
+  teamA: TeamPayload;
+  teamB: TeamPayload;
+}
 
-export default function TradeImpact({
-  teamAName, teamBName, preA, postA, preB, postB,
-}: Props) {
+const CAT_FORMAT: Record<Category, (n: number) => string> = {
+  R: n => Math.round(n).toLocaleString(),
+  HR: n => Math.round(n).toLocaleString(),
+  K: n => Math.round(n).toLocaleString(),
+  OBP: n => n.toFixed(3),
+  SLG: n => n.toFixed(3),
+  ERA: n => n.toFixed(2),
+  WHIP: n => n.toFixed(2),
+  HR9: n => n.toFixed(2),
+};
+
+const CAT_LABEL: Record<Category, string> = {
+  R: "R", HR: "HR", OBP: "OBP", SLG: "SLG",
+  K: "K", ERA: "ERA", WHIP: "WHIP", HR9: "HR/9",
+};
+
+const fmtRoto = (n: number) => (Number.isInteger(n) ? n.toFixed(1) : n.toFixed(1));
+const fmtRotoChange = (n: number) =>
+  (n > 0 ? "+" : "") + n.toFixed(1);
+
+export default function TradeImpact({ teamA, teamB }: Props) {
   return (
     <div className="rounded-lg border bg-card p-4 space-y-4">
       <h2 className="text-lg font-semibold">Trade Impact</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <TeamImpact name={teamAName} pre={preA} post={postA} />
-        <TeamImpact name={teamBName} pre={preB} post={postB} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <TeamImpact payload={teamA} />
+        <TeamImpact payload={teamB} />
       </div>
     </div>
   );
 }
 
-function TeamImpact({ name, pre, post }: { name: string; pre: OptimizedTeam; post: OptimizedTeam }) {
-  const valorDelta = post.totalValor - pre.totalValor;
-  const verdict = valorDelta > 0.5 ? "WIN" : valorDelta < -0.5 ? "LOSS" : "EVEN";
+function TeamImpact({ payload }: { payload: TeamPayload }) {
+  const { name, before, after, rotoBefore, rotoAfter } = payload;
+
+  const rows = ALL_CATS.map(cat => {
+    const beforeStat = before[cat];
+    const afterStat = after[cat];
+    const rb = rotoBefore[cat] ?? 0;
+    const ra = rotoAfter[cat] ?? 0;
+    return {
+      cat,
+      beforeStat,
+      afterStat,
+      statChange: afterStat - beforeStat,
+      rb,
+      ra,
+      rotoChange: ra - rb,
+    };
+  });
+
+  const totalRotoBefore = rows.reduce((s, r) => s + r.rb, 0);
+  const totalRotoAfter = rows.reduce((s, r) => s + r.ra, 0);
+  const totalRotoChange = totalRotoAfter - totalRotoBefore;
+
+  const verdict = totalRotoChange > 1.5 ? "WIN" : totalRotoChange < -1.5 ? "LOSS" : "NEUTRAL";
   const verdictClass =
     verdict === "WIN" ? "bg-positive text-primary-foreground" :
     verdict === "LOSS" ? "bg-negative text-primary-foreground" :
-    "bg-muted text-muted-foreground";
+    "bg-yellow-500 text-black";
 
   return (
     <div className="rounded border p-3 space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="font-semibold">{name}</h3>
-        <span className={`px-2 py-0.5 rounded text-xs font-bold tracking-wider ${verdictClass}`}>
-          {verdict}
-        </span>
-      </div>
-
-      <div className="rounded bg-muted/40 p-2">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Optimized VALOR</div>
-        <div className="flex items-baseline gap-2">
-          <span className="font-mono">{fmt(pre.totalValor)}</span>
-          <span className="text-muted-foreground">→</span>
-          <span className="font-mono font-bold">{fmt(post.totalValor)}</span>
-          <span className={`font-mono text-sm ml-auto ${valorDelta > 0 ? "text-positive" : valorDelta < 0 ? "text-negative" : ""}`}>
-            {valorDelta > 0 ? "+" : ""}{fmt(valorDelta)}
+        <div className="flex items-center gap-2">
+          <span className={`font-mono text-sm ${
+            totalRotoChange > 0.001 ? "text-positive" :
+            totalRotoChange < -0.001 ? "text-negative" : "text-muted-foreground"
+          }`}>
+            {fmtRotoChange(totalRotoChange)} pts
+          </span>
+          <span className={`px-2 py-0.5 rounded text-xs font-bold tracking-wider ${verdictClass}`}>
+            {verdict}
           </span>
         </div>
       </div>
 
-      <CategoryTable
-        title="Hitting"
-        rows={[
-          ["R", pre.categories.R, post.categories.R, 0, true],
-          ["HR", pre.categories.HR, post.categories.HR, 0, true],
-          ["OBP", pre.categories.OBP, post.categories.OBP, 3, true],
-          ["SLG", pre.categories.SLG, post.categories.SLG, 3, true],
-        ]}
-      />
-      <CategoryTable
-        title="Pitching"
-        rows={[
-          ["IP", pre.categories.IP, post.categories.IP, 1, true],
-          ["K", pre.categories.K, post.categories.K, 0, true],
-          ["ERA", pre.categories.ERA, post.categories.ERA, 2, false],
-          ["WHIP", pre.categories.WHIP, post.categories.WHIP, 3, false],
-          ["HR/9", pre.categories["HR/9"], post.categories["HR/9"], 2, false],
-        ] as Array<[string, number, number, number, boolean]>}
-      />
-    </div>
-  );
-}
-
-function CategoryTable({ title, rows }: {
-  title: string;
-  rows: Array<[string, number, number, number, boolean]>;
-}) {
-  return (
-    <div>
-      <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">{title}</div>
-      <div className="grid grid-cols-4 gap-x-2 gap-y-1 text-xs">
-        <div className="font-semibold text-muted-foreground">Cat</div>
-        <div className="font-semibold text-muted-foreground text-right">Pre</div>
-        <div className="font-semibold text-muted-foreground text-right">Post</div>
-        <div className="font-semibold text-muted-foreground text-right">Δ</div>
-        {rows.map(([label, pre, post, decimals, higherBetter]) => {
-          const delta = post - pre;
-          const isPositive = higherBetter ? delta > 0 : delta < 0;
-          const isNegative = higherBetter ? delta < 0 : delta > 0;
-          const colorClass = Math.abs(delta) < 0.0005 ? "text-muted-foreground" :
-            isPositive ? "text-positive" : isNegative ? "text-negative" : "";
-          const fmtFn = decimals === 3 ? fmtRate : (n: number) => fmt(n, decimals);
-          return (
-            <div key={label} className="contents font-mono">
-              <div>{label}</div>
-              <div className="text-right">{fmtFn(pre)}</div>
-              <div className="text-right">{fmtFn(post)}</div>
-              <div className={`text-right ${colorClass}`}>
-                {delta > 0 ? "+" : ""}{fmtFn(delta)}
-              </div>
-            </div>
-          );
-        })}
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="text-muted-foreground border-b">
+              <th className="text-left font-semibold py-1 pr-2">Cat</th>
+              <th className="text-right font-semibold py-1 px-1">Before</th>
+              <th className="text-right font-semibold py-1 px-1">After</th>
+              <th className="text-right font-semibold py-1 px-1">Δ Stat</th>
+              <th className="text-right font-semibold py-1 px-1">Pts Bef</th>
+              <th className="text-right font-semibold py-1 px-1">Pts Aft</th>
+              <th className="text-right font-semibold py-1 pl-1">Δ Pts</th>
+            </tr>
+          </thead>
+          <tbody className="font-mono">
+            {rows.map(r => {
+              const higherBetter = HIGHER_BETTER.includes(r.cat);
+              const statImproved = higherBetter ? r.statChange > 0 : r.statChange < 0;
+              const statWorsened = higherBetter ? r.statChange < 0 : r.statChange > 0;
+              const statClass = Math.abs(r.statChange) < 0.0005
+                ? "text-muted-foreground"
+                : statImproved ? "text-positive" : statWorsened ? "text-negative" : "";
+              const ptsClass = r.rotoChange > 0.001 ? "text-positive"
+                : r.rotoChange < -0.001 ? "text-negative" : "text-muted-foreground";
+              const fmt = CAT_FORMAT[r.cat];
+              return (
+                <tr key={r.cat} className="border-b border-border/40">
+                  <td className="text-left py-1 pr-2 font-sans text-muted-foreground">{CAT_LABEL[r.cat]}</td>
+                  <td className="text-right py-1 px-1">{fmt(r.beforeStat)}</td>
+                  <td className="text-right py-1 px-1">{fmt(r.afterStat)}</td>
+                  <td className={`text-right py-1 px-1 ${statClass}`}>
+                    {r.statChange > 0 ? "+" : ""}{fmt(r.statChange)}
+                  </td>
+                  <td className="text-right py-1 px-1">{fmtRoto(r.rb)}</td>
+                  <td className="text-right py-1 px-1">{fmtRoto(r.ra)}</td>
+                  <td className={`text-right py-1 pl-1 ${ptsClass}`}>{fmtRotoChange(r.rotoChange)}</td>
+                </tr>
+              );
+            })}
+            <tr className="font-bold">
+              <td className="text-left py-2 pr-2 font-sans">Total</td>
+              <td colSpan={3}></td>
+              <td className="text-right py-2 px-1">{fmtRoto(totalRotoBefore)}</td>
+              <td className="text-right py-2 px-1">{fmtRoto(totalRotoAfter)}</td>
+              <td className={`text-right py-2 pl-1 ${
+                totalRotoChange > 0.001 ? "text-positive" :
+                totalRotoChange < -0.001 ? "text-negative" : "text-muted-foreground"
+              }`}>
+                {fmtRotoChange(totalRotoChange)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   );
