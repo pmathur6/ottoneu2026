@@ -5,6 +5,7 @@ import { Loader2, AlertCircle } from "lucide-react";
 import RosterPanel from "@/components/trade/RosterPanel";
 import TradeBasket from "@/components/trade/TradeBasket";
 import TradeImpact from "@/components/trade/TradeImpact";
+import OptimizedRoster from "@/components/trade/OptimizedRoster";
 import {
   optimizeTeam, parseCaps, parseTeamProductionRows, parseEosStandings,
   buildBankedHitting, buildBankedPitching, rankTeams,
