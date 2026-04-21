@@ -36,6 +36,31 @@ export interface BankedPitching {
   hr9Num: number;  // sum of HR9 * IP
 }
 
+export interface HitterAllocation {
+  id: string;
+  gAlloc: number;
+  gTotal: number;
+  positionsFilled: string[];
+  blPA: number;
+  blR: number;
+  blHR: number;
+  blOBP: number;
+  blSLG: number;
+  valor: number;
+}
+
+export interface PitcherAllocation {
+  id: string;
+  ipAlloc: number;
+  ipTotal: number;
+  role: "SP" | "RP" | "—";
+  blK: number;
+  blERA: number;
+  blWHIP: number;
+  blHR9: number;
+  valor: number;
+}
+
 export interface OptimizedTeam {
   totalValor: number;
   categories: {
@@ -49,6 +74,8 @@ export interface OptimizedTeam {
     WHIP: number;
     "HR/9": number;
   };
+  hitterAllocations?: HitterAllocation[];
+  pitcherAllocations?: PitcherAllocation[];
   rotoPoints?: Record<string, number>;
   totalRotoPoints?: number;
 }
