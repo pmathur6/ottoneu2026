@@ -250,7 +250,7 @@ export function optimizeTeam(
   const p = optimizePitchers(pitchers, caps.maxIP, bankedPitching.IP);
 
   const totalPA = h.PA + bankedHitting.PA;
-  const totalIP = h.IP + bankedPitching.IP;
+  const totalIP = p.IP + bankedPitching.IP;
 
   return {
     totalValor: h.valor + p.valor,
@@ -259,7 +259,7 @@ export function optimizeTeam(
       HR:     h.HR + bankedHitting.HR,
       OBP:    totalPA > 0 ? (h.obpNum + bankedHitting.obpNum) / totalPA : 0,
       SLG:    totalPA > 0 ? (h.slgNum + bankedHitting.slgNum) / totalPA : 0,
-      IP:     h.IP + bankedPitching.IP,
+      IP:     p.IP + bankedPitching.IP,
       K:      p.K + bankedPitching.K,
       ERA:    totalIP > 0 ? (p.eraNum + bankedPitching.eraNum) / totalIP : 0,
       WHIP:   totalIP > 0 ? (p.whipNum + bankedPitching.whipNum) / totalIP : 0,
