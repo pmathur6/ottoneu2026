@@ -331,6 +331,8 @@ export function optimizeTeam(
       WHIP:   totalIP > 0 ? (p.whipNum + bankedPitching.whipNum) / totalIP : 0,
       "HR/9": totalIP > 0 ? (p.hr9Num + bankedPitching.hr9Num) / totalIP : 0,
     },
+    hitterAllocations: h.allocations,
+    pitcherAllocations: p.allocations,
   };
 }
 
