@@ -6,9 +6,9 @@ import RosterPanel from "@/components/trade/RosterPanel";
 import TradeBasket from "@/components/trade/TradeBasket";
 import TradeImpact from "@/components/trade/TradeImpact";
 import {
-  optimizeTeam, parseCaps, parseTeamProduction, parseEosStandings,
-  combineFullSeason, computeRotoPoints,
-  type Player, type FullSeasonCategories,
+  optimizeTeam, parseCaps, parseTeamProductionRows, parseEosStandings,
+  buildBankedHitting, buildBankedPitching, rankTeams,
+  type Player, type OptimizedTeam,
 } from "@/lib/tradeOptimizer";
 
 const Trade = () => {
@@ -58,7 +58,7 @@ const Trade = () => {
     return parseCaps(reshaped);
   }, [assumptions]);
 
-  const banked = useMemo(() => teamProd ? parseTeamProduction(teamProd) : null, [teamProd]);
+  const teamProdRows = useMemo(() => teamProd ? parseTeamProductionRows(teamProd) : null, [teamProd]);
   const eosBaseline = useMemo(() => eosStand ? parseEosStandings(eosStand) : null, [eosStand]);
 
   const [teamA, setTeamA] = useState("");
@@ -134,21 +134,19 @@ const Trade = () => {
   // Post-trade = recompute Team A & Team B using banked + ROS optimizer; other 10 unchanged.
   // ===================================================================
   const impact = useMemo(() => {
-    if (!simulated || !caps || !banked || !eosBaseline) return null;
+    if (!simulated || !caps || !teamProdRows || !eosBaseline) return null;
     const { a, b, ids } = simulated;
     const idSet = new Set(ids);
 
     // Pre-trade baseline: every team uses EOS Standings as-is.
-    const beforeStats: Record<string, FullSeasonCategories> = { ...eosBaseline };
+    const beforeStats: Record<string, OptimizedTeam["categories"]> = { ...eosBaseline };
 
     // Helper: compute full season stats for one team given its hitter/pitcher rosters.
-    const fullSeasonFor = (teamName: string, hRoster: Player[], pRoster: Player[]): FullSeasonCategories => {
-      const teamBanked = banked[teamName] ?? {
-        hitting: { R: 0, HR: 0, AB: 0, obpNum: 0, slgNum: 0, paWeight: 0 },
-        pitching: { IP: 0, K: 0, eraNum: 0, whipNum: 0, hr9Num: 0 },
-      };
-      const ros = optimizeTeam(hRoster, pRoster, caps);
-      return combineFullSeason(teamBanked, ros);
+    const fullSeasonFor = (teamName: string, hRoster: Player[], pRoster: Player[]): OptimizedTeam["categories"] => {
+      const { bankedHitting, bankedByPos } = buildBankedHitting(teamProdRows, teamName);
+      const bankedPitching = buildBankedPitching(teamProdRows, teamName);
+      const opt = optimizeTeam(hRoster, pRoster, caps, bankedHitting, bankedPitching, bankedByPos);
+      return opt.categories;
     };
 
     // Pre-trade rosters
@@ -170,30 +168,34 @@ const Trade = () => {
     const postPitchersB = teamPitchersB.filter(p => !idSet.has(p["playerid"])).concat(pMovingA);
 
     // After-trade stats: replace only A and B in baseline.
-    const afterStats: Record<string, FullSeasonCategories> = { ...beforeStats };
+    const afterStats: Record<string, OptimizedTeam["categories"]> = { ...beforeStats };
     afterStats[a] = fullSeasonFor(a, postHittersA, postPitchersA);
     afterStats[b] = fullSeasonFor(b, postHittersB, postPitchersB);
 
-    const rotoBefore = computeRotoPoints(beforeStats);
-    const rotoAfter = computeRotoPoints(afterStats);
+    const rotoBefore = rankTeams(beforeStats);
+    const rotoAfter = rankTeams(afterStats);
+
+    const emptyCats: OptimizedTeam["categories"] = {
+      R: 0, HR: 0, OBP: 0, SLG: 0, IP: 0, K: 0, ERA: 0, WHIP: 0, "HR/9": 0,
+    };
 
     return {
       teamA: {
         name: a,
-        before: beforeStats[a] ?? { R: 0, HR: 0, OBP: 0, SLG: 0, K: 0, ERA: 0, WHIP: 0, HR9: 0 },
+        before: beforeStats[a] ?? emptyCats,
         after: afterStats[a],
-        rotoBefore: rotoBefore[a],
-        rotoAfter: rotoAfter[a],
+        rotoBefore: rotoBefore[a] ?? {},
+        rotoAfter: rotoAfter[a] ?? {},
       },
       teamB: {
         name: b,
-        before: beforeStats[b] ?? { R: 0, HR: 0, OBP: 0, SLG: 0, K: 0, ERA: 0, WHIP: 0, HR9: 0 },
+        before: beforeStats[b] ?? emptyCats,
         after: afterStats[b],
-        rotoBefore: rotoBefore[b],
-        rotoAfter: rotoAfter[b],
+        rotoBefore: rotoBefore[b] ?? {},
+        rotoAfter: rotoAfter[b] ?? {},
       },
     };
-  }, [simulated, caps, banked, eosBaseline, allHitters, allPitchers]);
+  }, [simulated, caps, teamProdRows, eosBaseline, allHitters, allPitchers]);
 
   if (isLoading) {
     return (

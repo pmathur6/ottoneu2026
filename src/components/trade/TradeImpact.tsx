@@ -1,12 +1,14 @@
-import type { FullSeasonCategories, Category } from "@/lib/tradeOptimizer";
-import { ALL_CATS, HIGHER_BETTER } from "@/lib/tradeOptimizer";
+import type { OptimizedTeam, RotoCategory } from "@/lib/tradeOptimizer";
+import { ROTO_CATS, ROTO_HIGHER_BETTER } from "@/lib/tradeOptimizer";
+
+type Categories = OptimizedTeam["categories"];
 
 interface TeamPayload {
   name: string;
-  before: FullSeasonCategories;
-  after: FullSeasonCategories;
-  rotoBefore: Record<Category, number>;
-  rotoAfter: Record<Category, number>;
+  before: Categories;
+  after: Categories;
+  rotoBefore: Record<string, number>;
+  rotoAfter: Record<string, number>;
 }
 
 interface Props {
@@ -14,7 +16,7 @@ interface Props {
   teamB: TeamPayload;
 }
 
-const CAT_FORMAT: Record<Category, (n: number) => string> = {
+const CAT_FORMAT: Record<RotoCategory, (n: number) => string> = {
   R: n => Math.round(n).toLocaleString(),
   HR: n => Math.round(n).toLocaleString(),
   K: n => Math.round(n).toLocaleString(),
@@ -22,17 +24,11 @@ const CAT_FORMAT: Record<Category, (n: number) => string> = {
   SLG: n => n.toFixed(3),
   ERA: n => n.toFixed(2),
   WHIP: n => n.toFixed(2),
-  HR9: n => n.toFixed(2),
+  "HR/9": n => n.toFixed(2),
 };
 
-const CAT_LABEL: Record<Category, string> = {
-  R: "R", HR: "HR", OBP: "OBP", SLG: "SLG",
-  K: "K", ERA: "ERA", WHIP: "WHIP", HR9: "HR/9",
-};
-
-const fmtRoto = (n: number) => (Number.isInteger(n) ? n.toFixed(1) : n.toFixed(1));
-const fmtRotoChange = (n: number) =>
-  (n > 0 ? "+" : "") + n.toFixed(1);
+const fmtRoto = (n: number) => n.toFixed(1);
+const fmtRotoChange = (n: number) => (n > 0 ? "+" : "") + n.toFixed(1);
 
 export default function TradeImpact({ teamA, teamB }: Props) {
   return (
@@ -48,10 +44,11 @@ export default function TradeImpact({ teamA, teamB }: Props) {
 
 function TeamImpact({ payload }: { payload: TeamPayload }) {
   const { name, before, after, rotoBefore, rotoAfter } = payload;
+  const higherBetterSet = new Set<string>(ROTO_HIGHER_BETTER);
 
-  const rows = ALL_CATS.map(cat => {
-    const beforeStat = before[cat];
-    const afterStat = after[cat];
+  const rows = ROTO_CATS.map(cat => {
+    const beforeStat = before[cat] ?? 0;
+    const afterStat = after[cat] ?? 0;
     const rb = rotoBefore[cat] ?? 0;
     const ra = rotoAfter[cat] ?? 0;
     return {
@@ -107,7 +104,7 @@ function TeamImpact({ payload }: { payload: TeamPayload }) {
           </thead>
           <tbody className="font-mono">
             {rows.map(r => {
-              const higherBetter = HIGHER_BETTER.includes(r.cat);
+              const higherBetter = higherBetterSet.has(r.cat);
               const statImproved = higherBetter ? r.statChange > 0 : r.statChange < 0;
               const statWorsened = higherBetter ? r.statChange < 0 : r.statChange > 0;
               const statClass = Math.abs(r.statChange) < 0.0005
@@ -118,7 +115,7 @@ function TeamImpact({ payload }: { payload: TeamPayload }) {
               const fmt = CAT_FORMAT[r.cat];
               return (
                 <tr key={r.cat} className="border-b border-border/40">
-                  <td className="text-left py-1 pr-2 font-sans text-muted-foreground">{CAT_LABEL[r.cat]}</td>
+                  <td className="text-left py-1 pr-2 font-sans text-muted-foreground">{r.cat}</td>
                   <td className="text-right py-1 px-1">{fmt(r.beforeStat)}</td>
                   <td className="text-right py-1 px-1">{fmt(r.afterStat)}</td>
                   <td className={`text-right py-1 px-1 ${statClass}`}>

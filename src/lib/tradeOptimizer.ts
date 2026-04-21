@@ -1,9 +1,10 @@
-// Trade simulator optimizer logic — pure functions, no React.
-// Computes ROS-only optimization; banked YTD stats are added separately.
+// Trade simulator optimizer — ported from proven Apps Script logic.
+// Pure functions only, no sheet reads/writes.
 
 export type Player = Record<string, string>;
 
 export interface PositionCaps {
+  UTIL: number;
   C: number;
   "1B": number;
   "2B": number;
@@ -11,7 +12,6 @@ export interface PositionCaps {
   MI: number;
   "3B": number;
   OF: number;
-  UTIL: number;
 }
 
 export interface OptimizerCaps {
@@ -19,324 +19,411 @@ export interface OptimizerCaps {
   maxIP: number;
 }
 
-// ROS-only counting/rate accumulators from optimizer allocation.
-export interface HitterROS {
-  G: number;
-  PA: number;
-  AB: number; // approximated from PA when needed
-  HR: number;
-  R: number;
-  obpNum: number; // OBP weighted by PA
-  slgNum: number; // SLG weighted by PA
-}
-
-export interface PitcherROS {
-  IP: number;
-  K: number;
-  eraNum: number; // weighted by IP
-  whipNum: number;
-  hr9Num: number;
-}
-
-export interface OptimizedROS {
-  hitters: HitterROS;
-  pitchers: PitcherROS;
-}
-
-// Banked YTD stats from Team Production tab, summed across positions for one team.
 export interface BankedHitting {
+  G: number;
   R: number;
   HR: number;
-  AB: number;
-  obpNum: number; // OBP weighted by (AB * 1.13) per spec
-  slgNum: number; // SLG weighted by (AB * 1.13) per spec
-  paWeight: number; // total weight = sum(AB * 1.13)
+  obpNum: number; // sum of OBP * PA
+  slgNum: number; // sum of SLG * PA
+  PA: number;     // sum of AB * 1.13
 }
+
 export interface BankedPitching {
   IP: number;
   K: number;
-  eraNum: number; // ERA weighted by IP
-  whipNum: number;
-  hr9Num: number;
+  eraNum: number;  // sum of ERA * IP
+  whipNum: number; // sum of WHIP * IP
+  hr9Num: number;  // sum of HR9 * IP
 }
 
-export interface FullSeasonCategories {
-  R: number;
-  HR: number;
-  OBP: number;
-  SLG: number;
-  K: number;
-  ERA: number;
-  WHIP: number;
-  HR9: number;
+export interface OptimizedTeam {
+  totalValor: number;
+  categories: {
+    R: number;
+    HR: number;
+    OBP: number;
+    SLG: number;
+    IP: number;
+    K: number;
+    ERA: number;
+    WHIP: number;
+    "HR/9": number;
+  };
+  rotoPoints?: Record<string, number>;
+  totalRotoPoints?: number;
 }
 
 const num = (v: string | undefined): number => {
   if (!v) return 0;
-  const cleaned = String(v).replace(/[$,]/g, "").replace(/\((.+)\)/, "-$1").trim();
-  const n = parseFloat(cleaned);
+  const n = parseFloat(String(v).replace(/[$,]/g, "").trim());
   return isNaN(n) ? 0 : n;
 };
 
-const isEligibleHitter = (p: Player, pos: string): boolean => {
-  const positions = p["Positions"] || "";
-  if (pos === "MI") return /\b(2B|SS)\b/.test(positions);
-  if (pos === "UTIL") return true; // any hitter qualifies
-  const re = new RegExp(`(^|[^A-Z0-9])${pos}([^A-Z0-9]|$)`);
-  return re.test(positions);
+const truthy = (v: string | undefined): boolean => {
+  if (!v) return false;
+  const s = v.trim().toLowerCase();
+  return s === "true" || s === "yes" || s === "y" || s === "1";
 };
 
-// Returns position-specific WAR for a player. Falls back to Total WAR if missing.
-const warAtPos = (p: Player, pos: string): number => {
-  const colMap: Record<string, string> = {
-    UTIL: "Util", C: "C", "1B": "1B", "2B": "2B", SS: "SS", MI: "MI", "3B": "3B", OF: "OF",
-  };
-  const col = colMap[pos];
-  if (!col) return 0;
-  const v = num(p[col]);
-  return v || num(p["Total WAR"]);
-};
-
-// =====================================================================
-// HITTER OPTIMIZER — ROS only
-// =====================================================================
-function optimizeHitters(hitters: Player[], caps: PositionCaps): HitterROS {
-  const order: (keyof PositionCaps)[] = ["C", "SS", "2B", "MI", "3B", "1B", "OF", "UTIL"];
-  const used: Record<string, number> = {};
-  const allocG: Record<string, number> = {};
-
-  for (const pos of order) {
-    let cap = caps[pos] ?? 0;
-    if (cap <= 0) continue;
-
-    const candidates = hitters
-      .filter(p => {
-        const blG = num(p["BL_G"]);
-        const remaining = blG - (used[p["playerid"]] ?? 0);
-        return remaining > 0 && isEligibleHitter(p, pos);
-      })
-      .map(p => {
-        const blG = num(p["BL_G"]);
-        const w = warAtPos(p, pos);
-        const warG = blG > 0 ? w / blG : 0;
-        return { p, warG };
-      })
-      .sort((a, b) => b.warG - a.warG);
-
-    for (const { p } of candidates) {
-      if (cap <= 0) break;
-      const id = p["playerid"];
-      const blG = num(p["BL_G"]);
-      const remaining = blG - (used[id] ?? 0);
-      if (remaining <= 0) continue;
-      const games = Math.min(cap, remaining);
-      used[id] = (used[id] ?? 0) + games;
-      allocG[id] = (allocG[id] ?? 0) + games;
-      cap -= games;
-    }
-  }
-
-  let G = 0, PA = 0, AB = 0, HR = 0, R = 0, obpNum = 0, slgNum = 0;
-  for (const p of hitters) {
-    const id = p["playerid"];
-    const g = allocG[id] ?? 0;
-    if (g <= 0) continue;
-    const blG = num(p["BL_G"]);
-    if (blG <= 0) continue;
-    const share = g / blG;
-    const blPA = num(p["BL_PA"]);
-    const blHR = num(p["BL_HR"]);
-    const blR = num(p["BL_R"]);
-    const blOBP = num(p["BL_OBP"]);
-    const blSLG = num(p["BL_SLG"]);
-    const allocPA = blPA * share;
-
-    G += g;
-    PA += allocPA;
-    AB += allocPA / 1.13; // approx AB from PA
-    HR += blHR * share;
-    R += blR * share;
-    obpNum += blOBP * allocPA;
-    slgNum += blSLG * allocPA;
-  }
-
-  return { G, PA, AB, HR, R, obpNum, slgNum };
+interface HitterAlloc {
+  id: string;
+  gLeft: number;
+  gTotal: number;
+  elig: Record<string, boolean>;
+  warG: Record<string, number>;
+  blPA: number;
+  blHR: number;
+  blR: number;
+  blOBP: number;
+  blSLG: number;
+  valor: number;
 }
 
-// =====================================================================
-// PITCHER OPTIMIZER — ROS only
-// =====================================================================
-function optimizePitchers(pitchers: Player[], maxIP: number): PitcherROS {
-  const ranked = pitchers
-    .map(p => {
-      const ip = num(p["BL_IP"]);
-      const sp = num(p["SP"]);
-      const rp = num(p["RP"]);
-      const bestWar = Math.max(sp, rp) || num(p["Total WAR"]);
-      const warIp = ip > 0 ? bestWar / ip : 0;
-      return { p, warIp, ip };
-    })
-    .filter(x => x.ip > 0)
-    .sort((a, b) => b.warIp - a.warIp);
+interface PitcherAlloc {
+  id: string;
+  ipLeft: number;
+  ipTotal: number;
+  bestWarIp: number;
+  blK: number;
+  blERA: number;
+  blWHIP: number;
+  blHR9: number;
+  valor: number;
+}
 
-  let cap = maxIP;
-  let IP = 0, K = 0, eraNum = 0, whipNum = 0, hr9Num = 0;
+export function optimizeHitters(
+  hitters: Player[],
+  caps: PositionCaps,
+  banked: Record<string, { G: number }>
+): {
+  valor: number;
+  R: number;
+  HR: number;
+  obpNum: number;
+  slgNum: number;
+  PA: number;
+} {
+  const POS = ["UTIL", "C", "1B", "2B", "SS", "MI", "3B", "OF"] as const;
+  const fillOrder = ["C", "SS", "2B", "MI", "3B", "1B", "OF", "UTIL"];
 
-  for (const { p, ip } of ranked) {
-    if (cap <= 0) break;
-    const usedIp = Math.min(cap, ip);
-    const share = usedIp / ip;
-    const k = num(p["BL_SO"]);
-    const era = num(p["BL_ERA"]);
-    const whip = num(p["BL_WHIP"]);
-    const hr9 = num(p["BL_HR/9"]);
+  const players: HitterAlloc[] = hitters.map(p => {
+    const g = num(p["BL_G"]);
+    const elig: Record<string, boolean> = {};
+    for (const pos of POS) {
+      elig[pos] = pos === "UTIL" ? true : truthy(p[pos]);
+    }
+    elig["MI"] = /\b(2B|SS)\b/.test(p["Positions"] || "");
+    const warG: Record<string, number> = {};
+    for (const pos of POS) {
+      const war = num(p["WAR_" + pos]);
+      warG[pos] = g > 0 ? war / g : 0;
+    }
+    return {
+      id: p["playerid"],
+      gLeft: g,
+      gTotal: g,
+      elig,
+      warG,
+      blPA: num(p["BL_PA"]),
+      blHR: num(p["BL_HR"]),
+      blR: num(p["BL_R"]),
+      blOBP: num(p["BL_OBP"]),
+      blSLG: num(p["BL_SLG"]),
+      valor: num(p["Total WAR"]),
+    };
+  });
 
-    IP += usedIp;
-    K += k * share;
-    eraNum += era * usedIp;
-    whipNum += whip * usedIp;
-    hr9Num += hr9 * usedIp;
-    cap -= usedIp;
+  const capLeft: Record<string, number> = {};
+  for (const pos of POS) {
+    const bankedG = banked[pos]?.G ?? 0;
+    capLeft[pos] = Math.max(0, (caps[pos as keyof PositionCaps] ?? 0) - bankedG);
   }
 
-  return { IP, K, eraNum, whipNum, hr9Num };
+  const allocG: Record<string, number> = {};
+
+  for (const pos of fillOrder) {
+    let cap = capLeft[pos] ?? 0;
+    if (cap <= 0) continue;
+    const candidates = players
+      .filter(p => p.gLeft > 0 && p.elig[pos])
+      .sort((a, b) => b.warG[pos] - a.warG[pos]);
+    for (const p of candidates) {
+      if (cap <= 0) break;
+      const alloc = Math.min(cap, p.gLeft);
+      if (alloc <= 0) continue;
+      p.gLeft -= alloc;
+      cap -= alloc;
+      allocG[p.id] = (allocG[p.id] ?? 0) + alloc;
+    }
+    capLeft[pos] = cap;
+  }
+
+  let valor = 0, totalPA = 0, totalHR = 0, totalR = 0;
+  let obpWeighted = 0, slgWeighted = 0;
+  for (const p of players) {
+    const g = allocG[p.id] ?? 0;
+    if (g <= 0 || p.gTotal <= 0) continue;
+    const share = g / p.gTotal;
+    const allocPA = p.blPA * share;
+    valor += p.valor * share;
+    totalPA += allocPA;
+    totalHR += p.blHR * share;
+    totalR += p.blR * share;
+    obpWeighted += p.blOBP * allocPA;
+    slgWeighted += p.blSLG * allocPA;
+  }
+
+  return { valor, R: totalR, HR: totalHR, obpNum: obpWeighted, slgNum: slgWeighted, PA: totalPA };
+}
+
+export function optimizePitchers(
+  pitchers: Player[],
+  maxIP: number,
+  bankedIP: number
+): {
+  valor: number;
+  IP: number;
+  K: number;
+  eraNum: number;
+  whipNum: number;
+  hr9Num: number;
+} {
+  const remainingCap = Math.max(0, maxIP - bankedIP);
+
+  const players: PitcherAlloc[] = pitchers
+    .map(p => {
+      const ip = num(p["BL_IP"]);
+      const spElig = truthy(p["SP"]);
+      const rpElig = truthy(p["RP"]);
+      const warSP = num(p["WAR_SP"]);
+      const warRP = num(p["WAR_RP"]);
+      const warIpSP = ip > 0 ? warSP / ip : 0;
+      const warIpRP = ip > 0 ? warRP / ip : 0;
+      let bestWarIp = warIpSP;
+      if (spElig && rpElig) bestWarIp = Math.max(warIpSP, warIpRP);
+      else if (rpElig) bestWarIp = warIpRP;
+      return {
+        id: p["playerid"],
+        ipLeft: ip,
+        ipTotal: ip,
+        bestWarIp,
+        blK: num(p["BL_SO"]),
+        blERA: num(p["BL_ERA"]),
+        blWHIP: num(p["BL_WHIP"]),
+        blHR9: num(p["BL_HR/9"]),
+        valor: num(p["Total WAR"]),
+      };
+    })
+    .filter(p => p.ipTotal > 0)
+    .sort((a, b) => b.bestWarIp - a.bestWarIp);
+
+  let cap = remainingCap;
+  let valor = 0, totalIP = 0, totalK = 0;
+  let eraWeighted = 0, whipWeighted = 0, hr9Weighted = 0;
+
+  for (const p of players) {
+    if (cap <= 0) break;
+    const alloc = Math.min(cap, p.ipLeft);
+    if (alloc <= 0) continue;
+    const share = alloc / p.ipTotal;
+    valor += p.valor * share;
+    totalIP += alloc;
+    totalK += p.blK * share;
+    eraWeighted += p.blERA * alloc;
+    whipWeighted += p.blWHIP * alloc;
+    hr9Weighted += p.blHR9 * alloc;
+    cap -= alloc;
+  }
+
+  return { valor, IP: totalIP, K: totalK, eraNum: eraWeighted, whipNum: whipWeighted, hr9Num: hr9Weighted };
 }
 
 export function optimizeTeam(
   hitters: Player[],
   pitchers: Player[],
   caps: OptimizerCaps,
-): OptimizedROS {
+  bankedHitting: BankedHitting,
+  bankedPitching: BankedPitching,
+  bankedByPos: Record<string, { G: number }>
+): OptimizedTeam {
+  const h = optimizeHitters(hitters, caps.positions, bankedByPos);
+  const p = optimizePitchers(pitchers, caps.maxIP, bankedPitching.IP);
+
+  const totalPA = h.PA + bankedHitting.PA;
+  const totalIP = h.IP + bankedPitching.IP;
+
   return {
-    hitters: optimizeHitters(hitters, caps.positions),
-    pitchers: optimizePitchers(pitchers, caps.maxIP),
+    totalValor: h.valor + p.valor,
+    categories: {
+      R:      h.R + bankedHitting.R,
+      HR:     h.HR + bankedHitting.HR,
+      OBP:    totalPA > 0 ? (h.obpNum + bankedHitting.obpNum) / totalPA : 0,
+      SLG:    totalPA > 0 ? (h.slgNum + bankedHitting.slgNum) / totalPA : 0,
+      IP:     h.IP + bankedPitching.IP,
+      K:      p.K + bankedPitching.K,
+      ERA:    totalIP > 0 ? (p.eraNum + bankedPitching.eraNum) / totalIP : 0,
+      WHIP:   totalIP > 0 ? (p.whipNum + bankedPitching.whipNum) / totalIP : 0,
+      "HR/9": totalIP > 0 ? (p.hr9Num + bankedPitching.hr9Num) / totalIP : 0,
+    },
   };
 }
 
-// =====================================================================
-// Combine banked YTD + ROS optimizer output → full season categories
-// =====================================================================
-export function combineFullSeason(
-  banked: { hitting: BankedHitting; pitching: BankedPitching },
-  ros: OptimizedROS,
-): FullSeasonCategories {
-  const { hitting: bh, pitching: bp } = banked;
-
-  // OBP / SLG: weighted average. Banked weight = AB*1.13 (already in bh.paWeight). ROS weight = ROS PA.
-  const obpDen = bh.paWeight + ros.hitters.PA;
-  const slgDen = bh.paWeight + ros.hitters.PA;
-  const OBP = obpDen > 0 ? (bh.obpNum + ros.hitters.obpNum) / obpDen : 0;
-  const SLG = slgDen > 0 ? (bh.slgNum + ros.hitters.slgNum) / slgDen : 0;
-
-  // ERA / WHIP / HR9: weighted by IP
-  const ipDen = bp.IP + ros.pitchers.IP;
-  const ERA = ipDen > 0 ? (bp.eraNum + ros.pitchers.eraNum) / ipDen : 0;
-  const WHIP = ipDen > 0 ? (bp.whipNum + ros.pitchers.whipNum) / ipDen : 0;
-  const HR9 = ipDen > 0 ? (bp.hr9Num + ros.pitchers.hr9Num) / ipDen : 0;
-
-  return {
-    R: bh.R + ros.hitters.R,
-    HR: bh.HR + ros.hitters.HR,
-    OBP,
-    SLG,
-    K: bp.K + ros.pitchers.K,
-    ERA,
-    WHIP,
-    HR9,
-  };
-}
-
-// =====================================================================
-// Parse Assumptions caps tab.
-// Rows 108-115 column B → UTIL, C, 1B, 2B, SS, MI, 3B, OF.  Row 120 → max IP.
-// =====================================================================
 export function parseCaps(rows: string[][]): OptimizerCaps {
-  const get = (rowIdx1: number) => num(rows[rowIdx1 - 1]?.[1] ?? "0");
+  const get = (rowIdx1: number) => {
+    const val = rows[rowIdx1 - 1]?.[1] ?? "0";
+    const n = parseFloat(String(val).replace(/[$,]/g, "").trim());
+    return isNaN(n) ? 0 : n;
+  };
   return {
     positions: {
       UTIL: get(108),
-      C: get(109),
+      C:    get(109),
       "1B": get(110),
       "2B": get(111),
-      SS: get(112),
-      MI: get(113),
+      SS:   get(112),
+      MI:   get(113),
       "3B": get(114),
-      OF: get(115),
+      OF:   get(115),
     },
     maxIP: get(120),
   };
 }
 
-// =====================================================================
-// Parse Team Production tab → banked YTD stats per team.
-// Hitter rows: cols A-I = TeamID, TeamName, POS, G, AB, R, HR, OBP, SLG (exclude Bench).
-// Pitcher rows: cols K-S = TeamID, TeamName, POS, G, IP, K, HR9, ERA, WHIP (exclude Bench).
-// Returns map keyed by TeamName.
-// =====================================================================
-export function parseTeamProduction(rows: string[][]): Record<string, { hitting: BankedHitting; pitching: BankedPitching }> {
-  const teams: Record<string, { hitting: BankedHitting; pitching: BankedPitching }> = {};
-
-  const ensure = (team: string) => {
-    if (!teams[team]) {
-      teams[team] = {
-        hitting: { R: 0, HR: 0, AB: 0, obpNum: 0, slgNum: 0, paWeight: 0 },
-        pitching: { IP: 0, K: 0, eraNum: 0, whipNum: 0, hr9Num: 0 },
-      };
-    }
-    return teams[team];
-  };
-
-  // Skip header row (index 0).
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i] || [];
-
-    // Hitter side (A-I, indexes 0-8)
-    const hTeam = (row[1] || "").trim();
-    const hPos = (row[2] || "").trim();
-    if (hTeam && hPos && hPos.toLowerCase() !== "bench") {
-      const t = ensure(hTeam);
-      const ab = num(row[4]);
-      const r = num(row[5]);
-      const hr = num(row[6]);
-      const obp = num(row[7]);
-      const slg = num(row[8]);
-      const w = ab * 1.13;
-      t.hitting.AB += ab;
-      t.hitting.R += r;
-      t.hitting.HR += hr;
-      t.hitting.obpNum += obp * w;
-      t.hitting.slgNum += slg * w;
-      t.hitting.paWeight += w;
-    }
-
-    // Pitcher side (K-S, indexes 10-18)
-    const pTeam = (row[11] || "").trim();
-    const pPos = (row[12] || "").trim();
-    if (pTeam && pPos && pPos.toLowerCase() !== "bench") {
-      const t = ensure(pTeam);
-      const ip = num(row[14]);
-      const k = num(row[15]);
-      const hr9 = num(row[16]);
-      const era = num(row[17]);
-      const whip = num(row[18]);
-      t.pitching.IP += ip;
-      t.pitching.K += k;
-      t.pitching.eraNum += era * ip;
-      t.pitching.whipNum += whip * ip;
-      t.pitching.hr9Num += hr9 * ip;
-    }
+export function buildBankedHitting(
+  teamProduction: Record<string, string>[],
+  teamName: string
+): { bankedHitting: BankedHitting; bankedByPos: Record<string, { G: number }> } {
+  const hitterPositions = new Set(["C","1B","2B","SS","MI","3B","OF","UTIL"]);
+  let R = 0, HR = 0, obpNum = 0, slgNum = 0, PA = 0, G = 0;
+  const bankedByPos: Record<string, { G: number }> = {};
+  for (const row of teamProduction) {
+    const team = (row["TeamName"] || "").trim();
+    const pos = (row["POS"] || "").trim().toUpperCase();
+    if (team !== teamName) continue;
+    if (!hitterPositions.has(pos)) continue;
+    const g  = parseFloat(row["G"]   || "0") || 0;
+    const ab = parseFloat(row["AB"]  || "0") || 0;
+    const pa = ab * 1.13;
+    const r  = parseFloat(row["R"]   || "0") || 0;
+    const hr = parseFloat(row["HR"]  || "0") || 0;
+    const obp = parseFloat(row["OBP"] || "0") || 0;
+    const slg = parseFloat(row["SLG"] || "0") || 0;
+    G      += g;
+    R      += r;
+    HR     += hr;
+    PA     += pa;
+    obpNum += obp * pa;
+    slgNum += slg * pa;
+    bankedByPos[pos] = { G: g };
   }
-
-  return teams;
+  return { bankedHitting: { G, R, HR, obpNum, slgNum, PA }, bankedByPos };
 }
 
-// =====================================================================
+export function buildBankedPitching(
+  teamProduction: Record<string, string>[],
+  teamName: string
+): BankedPitching {
+  const pitcherPositions = new Set(["SP","RP"]);
+  let IP = 0, K = 0, eraNum = 0, whipNum = 0, hr9Num = 0;
+  for (const row of teamProduction) {
+    const team = (row["TeamName"] || "").trim();
+    const pos = (row["POS"] || "").trim().toUpperCase();
+    if (team !== teamName) continue;
+    if (!pitcherPositions.has(pos)) continue;
+    const ip   = parseFloat(row["IP"]   || "0") || 0;
+    const k    = parseFloat(row["K"]    || "0") || 0;
+    const era  = parseFloat(row["ERA"]  || "0") || 0;
+    const whip = parseFloat(row["WHIP"] || "0") || 0;
+    const hr9  = parseFloat(row["HR9"]  || "0") || 0;
+    IP     += ip;
+    K      += k;
+    eraNum  += era  * ip;
+    whipNum += whip * ip;
+    hr9Num  += hr9  * ip;
+  }
+  return { IP, K, eraNum, whipNum, hr9Num };
+}
+
+export type RotoCategory = "R" | "HR" | "OBP" | "SLG" | "K" | "ERA" | "WHIP" | "HR/9";
+export const ROTO_CATS: RotoCategory[] = ["R","HR","OBP","SLG","K","ERA","WHIP","HR/9"];
+export const ROTO_HIGHER_BETTER: RotoCategory[] = ["R","HR","OBP","SLG","K"];
+
+export function rankTeams(
+  allTeamStats: Record<string, OptimizedTeam["categories"]>
+): Record<string, Record<string, number>> {
+  const cats = ROTO_CATS;
+  const higherBetter = new Set<string>(ROTO_HIGHER_BETTER);
+  const rankings: Record<string, Record<string, number>> = {};
+  for (const cat of cats) {
+    const entries = Object.entries(allTeamStats).map(([team, stats]) => ({
+      team,
+      value: stats[cat as keyof typeof stats] as number,
+    }));
+    entries.sort((a, b) =>
+      higherBetter.has(cat) ? a.value - b.value : b.value - a.value
+    );
+    let i = 0;
+    while (i < entries.length) {
+      let j = i;
+      while (j < entries.length && entries[j].value === entries[i].value) j++;
+      const avgRank = (i + 1 + j) / 2;
+      for (let k = i; k < j; k++) {
+        if (!rankings[entries[k].team]) rankings[entries[k].team] = {};
+        rankings[entries[k].team][cat] = avgRank;
+      }
+      i = j;
+    }
+  }
+  return rankings;
+}
+
+// Parse Team Production sheet: hitter table cols A-I, pitcher table cols K-S.
+// Returns flat row objects with TeamName/POS/etc keys; each row has either hitter or pitcher columns populated.
+export function parseTeamProductionRows(rows: string[][]): Record<string, string>[] {
+  const out: Record<string, string>[] = [];
+  // skip header row 0
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i] || [];
+    // Hitter side A-I (0-8): TeamID, TeamName, POS, G, AB, R, HR, OBP, SLG
+    const hTeam = (r[1] || "").trim();
+    const hPos = (r[2] || "").trim();
+    if (hTeam && hPos && hPos.toLowerCase() !== "bench") {
+      out.push({
+        TeamID: r[0] ?? "",
+        TeamName: hTeam,
+        POS: hPos,
+        G: r[3] ?? "",
+        AB: r[4] ?? "",
+        R: r[5] ?? "",
+        HR: r[6] ?? "",
+        OBP: r[7] ?? "",
+        SLG: r[8] ?? "",
+      });
+    }
+    // Pitcher side K-S (10-18): TeamID, TeamName, POS, G, IP, K, HR9, ERA, WHIP
+    const pTeam = (r[11] || "").trim();
+    const pPos = (r[12] || "").trim();
+    if (pTeam && pPos && pPos.toLowerCase() !== "bench") {
+      out.push({
+        TeamID: r[10] ?? "",
+        TeamName: pTeam,
+        POS: pPos,
+        G: r[13] ?? "",
+        IP: r[14] ?? "",
+        K: r[15] ?? "",
+        HR9: r[16] ?? "",
+        ERA: r[17] ?? "",
+        WHIP: r[18] ?? "",
+      });
+    }
+  }
+  return out;
+}
+
 // Parse EOS Standings tab → projected full-season stats per team.
-// Row 1 is title, row 2 is header, rows 3-14 are 12 teams.
-// Cols A-I: Team, R, HR, OBP, SLG, K, ERA, WHIP, HR9.
-// =====================================================================
-export function parseEosStandings(rows: string[][]): Record<string, FullSeasonCategories> {
-  const out: Record<string, FullSeasonCategories> = {};
+// Row 1 title, row 2 header, rows 3+ teams. Cols A-I: Team, R, HR, OBP, SLG, K, ERA, WHIP, HR9.
+export function parseEosStandings(rows: string[][]): Record<string, OptimizedTeam["categories"]> {
+  const out: Record<string, OptimizedTeam["categories"]> = {};
   for (let i = 2; i < rows.length; i++) {
     const r = rows[i] || [];
     const team = (r[0] || "").trim();
@@ -346,57 +433,12 @@ export function parseEosStandings(rows: string[][]): Record<string, FullSeasonCa
       HR: num(r[2]),
       OBP: num(r[3]),
       SLG: num(r[4]),
+      IP: 0,
       K: num(r[5]),
       ERA: num(r[6]),
       WHIP: num(r[7]),
-      HR9: num(r[8]),
+      "HR/9": num(r[8]),
     };
-  }
-  return out;
-}
-
-// =====================================================================
-// Roto ranking: ranks 1 (worst) → N (best). Higher-better cats rank ascending.
-// Lower-better cats: invert. Ties get average rank.
-// =====================================================================
-export type Category = keyof FullSeasonCategories;
-export const HIGHER_BETTER: Category[] = ["R", "HR", "OBP", "SLG", "K"];
-export const LOWER_BETTER: Category[] = ["ERA", "WHIP", "HR9"];
-export const ALL_CATS: Category[] = [...HIGHER_BETTER, ...LOWER_BETTER];
-
-export function rankTeams(
-  values: Record<string, number>,
-  higherBetter: boolean,
-): Record<string, number> {
-  const entries = Object.entries(values);
-  // Sort by score, worst-first so worst → rank 1.
-  entries.sort((a, b) => higherBetter ? a[1] - b[1] : b[1] - a[1]);
-
-  const ranks: Record<string, number> = {};
-  let i = 0;
-  while (i < entries.length) {
-    let j = i;
-    while (j < entries.length && entries[j][1] === entries[i][1]) j++;
-    // Tied indices [i, j). Average rank.
-    const avgRank = ((i + 1) + j) / 2;
-    for (let k = i; k < j; k++) ranks[entries[k][0]] = avgRank;
-    i = j;
-  }
-  return ranks;
-}
-
-export function computeRotoPoints(
-  teamStats: Record<string, FullSeasonCategories>,
-): Record<string, Record<Category, number>> {
-  const out: Record<string, Record<Category, number>> = {};
-  for (const team of Object.keys(teamStats)) {
-    out[team] = {} as Record<Category, number>;
-  }
-  for (const cat of ALL_CATS) {
-    const vals: Record<string, number> = {};
-    for (const team of Object.keys(teamStats)) vals[team] = teamStats[team][cat];
-    const ranks = rankTeams(vals, HIGHER_BETTER.includes(cat));
-    for (const team of Object.keys(ranks)) out[team][cat] = ranks[team];
   }
   return out;
 }
