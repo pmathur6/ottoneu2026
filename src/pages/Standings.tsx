@@ -229,14 +229,13 @@ function StandingsTable({
                 sortedData.map((row, i) => {
                   const teamName = row["Team"] ?? "";
                   const isYoshi = teamName.toLowerCase().includes("yoshi");
+                  const lastIdx = columns.length - 1;
                   return (
                     <TableRow
                       key={i}
-                      className={`border-border hover:bg-accent/50 ${
-                        isYoshi ? "ring-1 ring-standings-gold ring-inset" : ""
-                      }`}
+                      className="border-border hover:bg-accent/50"
                     >
-                      {columns.map(col => {
+                      {columns.map((col, colIdx) => {
                         const val = row[col] ?? "";
                         const num = parseFloat(val);
                         const isCat = isRankings && CATEGORY_COLS.includes(col) && !isNaN(num);
@@ -244,13 +243,18 @@ function StandingsTable({
                         const colorClass = isCat ? getRankColor(num, totalTeams) : "";
 
                         const isTeam = col === "Team";
+                        const isFirst = colIdx === 0;
+                        const isLast = colIdx === lastIdx;
+                        const yoshiBorder = isYoshi
+                          ? `border-t border-b border-standings-gold ${isFirst ? "border-l" : ""} ${isLast ? "border-r" : ""}`
+                          : "";
                         return (
                           <TableCell
                             key={col}
                             style={isTeam ? { position: "sticky" as const, left: 0, zIndex: 10 } : {}}
                             className={`whitespace-nowrap px-3 py-2 text-sm font-mono ${colorClass} ${
                               isTotal ? "font-bold" : ""
-                            } ${isTeam ? `font-sans font-medium bg-card ${isYoshi ? "ring-1 ring-standings-gold ring-inset" : ""}` : ""}`}
+                            } ${isTeam ? "font-sans font-medium bg-card" : ""} ${yoshiBorder}`}
                           >
                             {val}
                           </TableCell>
