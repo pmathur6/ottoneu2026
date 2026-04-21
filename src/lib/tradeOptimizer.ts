@@ -36,6 +36,31 @@ export interface BankedPitching {
   hr9Num: number;  // sum of HR9 * IP
 }
 
+export interface HitterAllocation {
+  id: string;
+  gAlloc: number;
+  gTotal: number;
+  positionsFilled: string[];
+  blPA: number;
+  blR: number;
+  blHR: number;
+  blOBP: number;
+  blSLG: number;
+  valor: number;
+}
+
+export interface PitcherAllocation {
+  id: string;
+  ipAlloc: number;
+  ipTotal: number;
+  role: "SP" | "RP" | "—";
+  blK: number;
+  blERA: number;
+  blWHIP: number;
+  blHR9: number;
+  valor: number;
+}
+
 export interface OptimizedTeam {
   totalValor: number;
   categories: {
@@ -49,6 +74,8 @@ export interface OptimizedTeam {
     WHIP: number;
     "HR/9": number;
   };
+  hitterAllocations?: HitterAllocation[];
+  pitcherAllocations?: PitcherAllocation[];
   rotoPoints?: Record<string, number>;
   totalRotoPoints?: number;
 }
@@ -102,6 +129,7 @@ export function optimizeHitters(
   obpNum: number;
   slgNum: number;
   PA: number;
+  allocations: HitterAllocation[];
 } {
   const POS = ["UTIL", "C", "1B", "2B", "SS", "MI", "3B", "OF"] as const;
   const fillOrder = ["C", "SS", "2B", "MI", "3B", "1B", "OF", "UTIL"];
@@ -140,6 +168,7 @@ export function optimizeHitters(
   }
 
   const allocG: Record<string, number> = {};
+  const allocPositions: Record<string, string[]> = {};
 
   for (const pos of fillOrder) {
     let cap = capLeft[pos] ?? 0;
@@ -154,14 +183,29 @@ export function optimizeHitters(
       p.gLeft -= alloc;
       cap -= alloc;
       allocG[p.id] = (allocG[p.id] ?? 0) + alloc;
+      if (!allocPositions[p.id]) allocPositions[p.id] = [];
+      allocPositions[p.id].push(pos);
     }
     capLeft[pos] = cap;
   }
 
   let valor = 0, totalPA = 0, totalHR = 0, totalR = 0;
   let obpWeighted = 0, slgWeighted = 0;
+  const allocations: HitterAllocation[] = [];
   for (const p of players) {
     const g = allocG[p.id] ?? 0;
+    allocations.push({
+      id: p.id,
+      gAlloc: g,
+      gTotal: p.gTotal,
+      positionsFilled: allocPositions[p.id] ?? [],
+      blPA: p.blPA,
+      blR: p.blR,
+      blHR: p.blHR,
+      blOBP: p.blOBP,
+      blSLG: p.blSLG,
+      valor: p.valor,
+    });
     if (g <= 0 || p.gTotal <= 0) continue;
     const share = g / p.gTotal;
     const allocPA = p.blPA * share;
@@ -173,7 +217,7 @@ export function optimizeHitters(
     slgWeighted += p.blSLG * allocPA;
   }
 
-  return { valor, R: totalR, HR: totalHR, obpNum: obpWeighted, slgNum: slgWeighted, PA: totalPA };
+  return { valor, R: totalR, HR: totalHR, obpNum: obpWeighted, slgNum: slgWeighted, PA: totalPA, allocations };
 }
 
 export function optimizePitchers(
@@ -187,10 +231,11 @@ export function optimizePitchers(
   eraNum: number;
   whipNum: number;
   hr9Num: number;
+  allocations: PitcherAllocation[];
 } {
   const remainingCap = Math.max(0, maxIP - bankedIP);
 
-  const players: PitcherAlloc[] = pitchers
+  const players = pitchers
     .map(p => {
       const ip = num(p["BL_IP"]);
       const spElig = truthy(p["SP"]);
@@ -200,13 +245,20 @@ export function optimizePitchers(
       const warIpSP = ip > 0 ? warSP / ip : 0;
       const warIpRP = ip > 0 ? warRP / ip : 0;
       let bestWarIp = warIpSP;
-      if (spElig && rpElig) bestWarIp = Math.max(warIpSP, warIpRP);
-      else if (rpElig) bestWarIp = warIpRP;
+      let role: "SP" | "RP" | "—" = spElig ? "SP" : rpElig ? "RP" : "—";
+      if (spElig && rpElig) {
+        if (warIpRP > warIpSP) { bestWarIp = warIpRP; role = "RP"; }
+        else { bestWarIp = warIpSP; role = "SP"; }
+      } else if (rpElig) {
+        bestWarIp = warIpRP;
+        role = "RP";
+      }
       return {
         id: p["playerid"],
         ipLeft: ip,
         ipTotal: ip,
         bestWarIp,
+        role,
         blK: num(p["BL_SO"]),
         blERA: num(p["BL_ERA"]),
         blWHIP: num(p["BL_WHIP"]),
@@ -220,6 +272,7 @@ export function optimizePitchers(
   let cap = remainingCap;
   let valor = 0, totalIP = 0, totalK = 0;
   let eraWeighted = 0, whipWeighted = 0, hr9Weighted = 0;
+  const ipAllocMap: Record<string, number> = {};
 
   for (const p of players) {
     if (cap <= 0) break;
@@ -233,9 +286,22 @@ export function optimizePitchers(
     whipWeighted += p.blWHIP * alloc;
     hr9Weighted += p.blHR9 * alloc;
     cap -= alloc;
+    ipAllocMap[p.id] = alloc;
   }
 
-  return { valor, IP: totalIP, K: totalK, eraNum: eraWeighted, whipNum: whipWeighted, hr9Num: hr9Weighted };
+  const allocations: PitcherAllocation[] = players.map(p => ({
+    id: p.id,
+    ipAlloc: ipAllocMap[p.id] ?? 0,
+    ipTotal: p.ipTotal,
+    role: p.role,
+    blK: p.blK,
+    blERA: p.blERA,
+    blWHIP: p.blWHIP,
+    blHR9: p.blHR9,
+    valor: p.valor,
+  }));
+
+  return { valor, IP: totalIP, K: totalK, eraNum: eraWeighted, whipNum: whipWeighted, hr9Num: hr9Weighted, allocations };
 }
 
 export function optimizeTeam(
@@ -265,6 +331,8 @@ export function optimizeTeam(
       WHIP:   totalIP > 0 ? (p.whipNum + bankedPitching.whipNum) / totalIP : 0,
       "HR/9": totalIP > 0 ? (p.hr9Num + bankedPitching.hr9Num) / totalIP : 0,
     },
+    hitterAllocations: h.allocations,
+    pitcherAllocations: p.allocations,
   };
 }
 
