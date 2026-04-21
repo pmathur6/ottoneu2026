@@ -129,6 +129,7 @@ export function optimizeHitters(
   obpNum: number;
   slgNum: number;
   PA: number;
+  allocations: HitterAllocation[];
 } {
   const POS = ["UTIL", "C", "1B", "2B", "SS", "MI", "3B", "OF"] as const;
   const fillOrder = ["C", "SS", "2B", "MI", "3B", "1B", "OF", "UTIL"];
@@ -167,6 +168,7 @@ export function optimizeHitters(
   }
 
   const allocG: Record<string, number> = {};
+  const allocPositions: Record<string, string[]> = {};
 
   for (const pos of fillOrder) {
     let cap = capLeft[pos] ?? 0;
@@ -181,14 +183,29 @@ export function optimizeHitters(
       p.gLeft -= alloc;
       cap -= alloc;
       allocG[p.id] = (allocG[p.id] ?? 0) + alloc;
+      if (!allocPositions[p.id]) allocPositions[p.id] = [];
+      allocPositions[p.id].push(pos);
     }
     capLeft[pos] = cap;
   }
 
   let valor = 0, totalPA = 0, totalHR = 0, totalR = 0;
   let obpWeighted = 0, slgWeighted = 0;
+  const allocations: HitterAllocation[] = [];
   for (const p of players) {
     const g = allocG[p.id] ?? 0;
+    allocations.push({
+      id: p.id,
+      gAlloc: g,
+      gTotal: p.gTotal,
+      positionsFilled: allocPositions[p.id] ?? [],
+      blPA: p.blPA,
+      blR: p.blR,
+      blHR: p.blHR,
+      blOBP: p.blOBP,
+      blSLG: p.blSLG,
+      valor: p.valor,
+    });
     if (g <= 0 || p.gTotal <= 0) continue;
     const share = g / p.gTotal;
     const allocPA = p.blPA * share;
@@ -200,7 +217,7 @@ export function optimizeHitters(
     slgWeighted += p.blSLG * allocPA;
   }
 
-  return { valor, R: totalR, HR: totalHR, obpNum: obpWeighted, slgNum: slgWeighted, PA: totalPA };
+  return { valor, R: totalR, HR: totalHR, obpNum: obpWeighted, slgNum: slgWeighted, PA: totalPA, allocations };
 }
 
 export function optimizePitchers(
