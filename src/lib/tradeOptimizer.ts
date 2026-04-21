@@ -231,10 +231,11 @@ export function optimizePitchers(
   eraNum: number;
   whipNum: number;
   hr9Num: number;
+  allocations: PitcherAllocation[];
 } {
   const remainingCap = Math.max(0, maxIP - bankedIP);
 
-  const players: PitcherAlloc[] = pitchers
+  const players = pitchers
     .map(p => {
       const ip = num(p["BL_IP"]);
       const spElig = truthy(p["SP"]);
@@ -244,13 +245,20 @@ export function optimizePitchers(
       const warIpSP = ip > 0 ? warSP / ip : 0;
       const warIpRP = ip > 0 ? warRP / ip : 0;
       let bestWarIp = warIpSP;
-      if (spElig && rpElig) bestWarIp = Math.max(warIpSP, warIpRP);
-      else if (rpElig) bestWarIp = warIpRP;
+      let role: "SP" | "RP" | "—" = spElig ? "SP" : rpElig ? "RP" : "—";
+      if (spElig && rpElig) {
+        if (warIpRP > warIpSP) { bestWarIp = warIpRP; role = "RP"; }
+        else { bestWarIp = warIpSP; role = "SP"; }
+      } else if (rpElig) {
+        bestWarIp = warIpRP;
+        role = "RP";
+      }
       return {
         id: p["playerid"],
         ipLeft: ip,
         ipTotal: ip,
         bestWarIp,
+        role,
         blK: num(p["BL_SO"]),
         blERA: num(p["BL_ERA"]),
         blWHIP: num(p["BL_WHIP"]),
@@ -264,6 +272,7 @@ export function optimizePitchers(
   let cap = remainingCap;
   let valor = 0, totalIP = 0, totalK = 0;
   let eraWeighted = 0, whipWeighted = 0, hr9Weighted = 0;
+  const ipAllocMap: Record<string, number> = {};
 
   for (const p of players) {
     if (cap <= 0) break;
@@ -277,9 +286,22 @@ export function optimizePitchers(
     whipWeighted += p.blWHIP * alloc;
     hr9Weighted += p.blHR9 * alloc;
     cap -= alloc;
+    ipAllocMap[p.id] = alloc;
   }
 
-  return { valor, IP: totalIP, K: totalK, eraNum: eraWeighted, whipNum: whipWeighted, hr9Num: hr9Weighted };
+  const allocations: PitcherAllocation[] = players.map(p => ({
+    id: p.id,
+    ipAlloc: ipAllocMap[p.id] ?? 0,
+    ipTotal: p.ipTotal,
+    role: p.role,
+    blK: p.blK,
+    blERA: p.blERA,
+    blWHIP: p.blWHIP,
+    blHR9: p.blHR9,
+    valor: p.valor,
+  }));
+
+  return { valor, IP: totalIP, K: totalK, eraNum: eraWeighted, whipNum: whipWeighted, hr9Num: hr9Weighted, allocations };
 }
 
 export function optimizeTeam(
