@@ -291,7 +291,53 @@ const Trade = () => {
       />
 
       {impact && simulated && (
-        <TradeImpact teamA={impact.teamA} teamB={impact.teamB} />
+        <>
+          <TradeImpact teamA={impact.teamA} teamB={impact.teamB} />
+
+          {impact.hittersInvolved && (
+            <div className="space-y-3">
+              <h2 className="text-lg font-semibold">Optimized Hitter Allocation (post-trade)</h2>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <OptimizedRoster
+                  teamName={impact.teamA.name}
+                  type="hitters"
+                  allocations={impact.teamA.optimized.hitterAllocations ?? []}
+                  playerLookup={impact.playerLookup}
+                  movedInIds={impact.teamA.movedInIds}
+                />
+                <OptimizedRoster
+                  teamName={impact.teamB.name}
+                  type="hitters"
+                  allocations={impact.teamB.optimized.hitterAllocations ?? []}
+                  playerLookup={impact.playerLookup}
+                  movedInIds={impact.teamB.movedInIds}
+                />
+              </div>
+            </div>
+          )}
+
+          {impact.pitchersInvolved && (
+            <div className="space-y-3">
+              <h2 className="text-lg font-semibold">Optimized Pitcher Allocation (post-trade)</h2>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <OptimizedRoster
+                  teamName={impact.teamA.name}
+                  type="pitchers"
+                  allocations={impact.teamA.optimized.pitcherAllocations ?? []}
+                  playerLookup={impact.playerLookup}
+                  movedInIds={impact.teamA.movedInIds}
+                />
+                <OptimizedRoster
+                  teamName={impact.teamB.name}
+                  type="pitchers"
+                  allocations={impact.teamB.optimized.pitcherAllocations ?? []}
+                  playerLookup={impact.playerLookup}
+                  movedInIds={impact.teamB.movedInIds}
+                />
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
