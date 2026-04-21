@@ -142,12 +142,11 @@ const Trade = () => {
     // Pre-trade baseline: every team uses EOS Standings as-is.
     const beforeStats: Record<string, OptimizedTeam["categories"]> = { ...eosBaseline };
 
-    // Helper: compute full season stats for one team given its hitter/pitcher rosters.
-    const fullSeasonFor = (teamName: string, hRoster: Player[], pRoster: Player[]): OptimizedTeam["categories"] => {
+    // Helper: compute full season stats AND allocations for one team given its hitter/pitcher rosters.
+    const fullSeasonFor = (teamName: string, hRoster: Player[], pRoster: Player[]): OptimizedTeam => {
       const { bankedHitting, bankedByPos } = buildBankedHitting(teamProdRows, teamName);
       const bankedPitching = buildBankedPitching(teamProdRows, teamName);
-      const opt = optimizeTeam(hRoster, pRoster, caps, bankedHitting, bankedPitching, bankedByPos);
-      return opt.categories;
+      return optimizeTeam(hRoster, pRoster, caps, bankedHitting, bankedPitching, bankedByPos);
     };
 
     // Pre-trade rosters
@@ -172,10 +171,11 @@ const Trade = () => {
     const hittersInvolved = hMovingA.length > 0 || hMovingB.length > 0;
     const pitchersInvolved = pMovingA.length > 0 || pMovingB.length > 0;
 
+    const optA = fullSeasonFor(a, postHittersA, postPitchersA);
+    const optB = fullSeasonFor(b, postHittersB, postPitchersB);
+
     // After-trade stats: replace only A and B in baseline.
     const afterStats: Record<string, OptimizedTeam["categories"]> = { ...beforeStats };
-    const computedA = fullSeasonFor(a, postHittersA, postPitchersA);
-    const computedB = fullSeasonFor(b, postHittersB, postPitchersB);
 
     // If only hitters move, pitching cats stay at baseline. If only pitchers move, hitting cats stay at baseline.
     const HITTING_CATS = ["R", "HR", "OBP", "SLG"] as const;
@@ -189,8 +189,8 @@ const Trade = () => {
       if (pitchersInvolved) for (const c of PITCHING_CATS) out[c] = computed[c];
       return out;
     };
-    afterStats[a] = mergeCats(beforeStats[a] ?? computedA, computedA);
-    afterStats[b] = mergeCats(beforeStats[b] ?? computedB, computedB);
+    afterStats[a] = mergeCats(beforeStats[a] ?? optA.categories, optA.categories);
+    afterStats[b] = mergeCats(beforeStats[b] ?? optB.categories, optB.categories);
 
     const rotoBefore = rankTeams(beforeStats);
     const rotoAfter = rankTeams(afterStats);
@@ -199,13 +199,24 @@ const Trade = () => {
       R: 0, HR: 0, OBP: 0, SLG: 0, IP: 0, K: 0, ERA: 0, WHIP: 0, "HR/9": 0,
     };
 
+    // Build a player lookup by id and the set of ids each team newly received.
+    const playerLookup: Record<string, Player> = {};
+    for (const p of [...allHitters, ...allPitchers]) playerLookup[p["playerid"]] = p;
+    const movedToAIds = new Set([...hMovingB, ...pMovingB].map(p => p["playerid"]));
+    const movedToBIds = new Set([...hMovingA, ...pMovingA].map(p => p["playerid"]));
+
     return {
+      hittersInvolved,
+      pitchersInvolved,
+      playerLookup,
       teamA: {
         name: a,
         before: beforeStats[a] ?? emptyCats,
         after: afterStats[a],
         rotoBefore: rotoBefore[a] ?? {},
         rotoAfter: rotoAfter[a] ?? {},
+        optimized: optA,
+        movedInIds: movedToAIds,
       },
       teamB: {
         name: b,
@@ -213,6 +224,8 @@ const Trade = () => {
         after: afterStats[b],
         rotoBefore: rotoBefore[b] ?? {},
         rotoAfter: rotoAfter[b] ?? {},
+        optimized: optB,
+        movedInIds: movedToBIds,
       },
     };
   }, [simulated, caps, teamProdRows, eosBaseline, allHitters, allPitchers]);
