@@ -167,10 +167,29 @@ const Trade = () => {
     const postHittersB = teamHittersB.filter(p => !idSet.has(p["playerid"])).concat(hMovingA);
     const postPitchersB = teamPitchersB.filter(p => !idSet.has(p["playerid"])).concat(pMovingA);
 
+    // Detect whether the trade actually moves hitters and/or pitchers.
+    const hittersInvolved = hMovingA.length > 0 || hMovingB.length > 0;
+    const pitchersInvolved = pMovingA.length > 0 || pMovingB.length > 0;
+
     // After-trade stats: replace only A and B in baseline.
     const afterStats: Record<string, OptimizedTeam["categories"]> = { ...beforeStats };
-    afterStats[a] = fullSeasonFor(a, postHittersA, postPitchersA);
-    afterStats[b] = fullSeasonFor(b, postHittersB, postPitchersB);
+    const computedA = fullSeasonFor(a, postHittersA, postPitchersA);
+    const computedB = fullSeasonFor(b, postHittersB, postPitchersB);
+
+    // If only hitters move, pitching cats stay at baseline. If only pitchers move, hitting cats stay at baseline.
+    const HITTING_CATS = ["R", "HR", "OBP", "SLG"] as const;
+    const PITCHING_CATS = ["IP", "K", "ERA", "WHIP", "HR/9"] as const;
+    const mergeCats = (
+      baseline: OptimizedTeam["categories"],
+      computed: OptimizedTeam["categories"]
+    ): OptimizedTeam["categories"] => {
+      const out = { ...baseline };
+      if (hittersInvolved) for (const c of HITTING_CATS) out[c] = computed[c];
+      if (pitchersInvolved) for (const c of PITCHING_CATS) out[c] = computed[c];
+      return out;
+    };
+    afterStats[a] = mergeCats(beforeStats[a] ?? computedA, computedA);
+    afterStats[b] = mergeCats(beforeStats[b] ?? computedB, computedB);
 
     const rotoBefore = rankTeams(beforeStats);
     const rotoAfter = rankTeams(afterStats);
