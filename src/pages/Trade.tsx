@@ -193,8 +193,8 @@ const Trade = () => {
       if (pitchersInvolved) for (const c of PITCHING_CATS) out[c] = computed[c];
       return out;
     };
-    afterStats[a] = mergeCats(beforeStats[a] ?? optA.categories, optA.categories);
-    afterStats[b] = mergeCats(beforeStats[b] ?? optB.categories, optB.categories);
+    afterStats[a] = mergeCats(beforeStats[a] ?? optA.team.categories, optA.team.categories);
+    afterStats[b] = mergeCats(beforeStats[b] ?? optB.team.categories, optB.team.categories);
 
     const rotoBefore = rankTeams(beforeStats);
     const rotoAfter = rankTeams(afterStats);
@@ -219,7 +219,9 @@ const Trade = () => {
         after: afterStats[a],
         rotoBefore: rotoBefore[a] ?? {},
         rotoAfter: rotoAfter[a] ?? {},
-        optimized: optA,
+        optimized: optA.team,
+        bankedByPos: optA.bankedByPos,
+        bankedByRole: optA.bankedByRole,
         movedInIds: movedToAIds,
       },
       teamB: {
@@ -228,7 +230,9 @@ const Trade = () => {
         after: afterStats[b],
         rotoBefore: rotoBefore[b] ?? {},
         rotoAfter: rotoAfter[b] ?? {},
-        optimized: optB,
+        optimized: optB.team,
+        bankedByPos: optB.bankedByPos,
+        bankedByRole: optB.bankedByRole,
         movedInIds: movedToBIds,
       },
     };
