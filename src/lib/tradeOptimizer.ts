@@ -41,12 +41,31 @@ export interface HitterAllocation {
   gAlloc: number;
   gTotal: number;
   positionsFilled: string[];
+  /** Per-position allocation breakdown: one entry per slot the player filled */
+  positionAllocations: { pos: string; gAlloc: number }[];
   blPA: number;
   blR: number;
   blHR: number;
   blOBP: number;
   blSLG: number;
   valor: number;
+}
+
+export interface BankedByPos {
+  G: number;
+  AB: number;
+  R: number;
+  HR: number;
+  OBP: number;
+  SLG: number;
+}
+
+export interface BankedByRole {
+  IP: number;
+  K: number;
+  ERA: number;
+  WHIP: number;
+  HR9: number;
 }
 
 export interface PitcherAllocation {
