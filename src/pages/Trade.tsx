@@ -143,10 +143,14 @@ const Trade = () => {
     const beforeStats: Record<string, OptimizedTeam["categories"]> = { ...eosBaseline };
 
     // Helper: compute full season stats AND allocations for one team given its hitter/pitcher rosters.
-    const fullSeasonFor = (teamName: string, hRoster: Player[], pRoster: Player[]): OptimizedTeam => {
+    const fullSeasonFor = (teamName: string, hRoster: Player[], pRoster: Player[]) => {
       const { bankedHitting, bankedByPos } = buildBankedHitting(teamProdRows, teamName);
-      const bankedPitching = buildBankedPitching(teamProdRows, teamName);
-      return optimizeTeam(hRoster, pRoster, caps, bankedHitting, bankedPitching, bankedByPos);
+      const { bankedPitching, bankedByRole } = buildBankedPitching(teamProdRows, teamName);
+      return {
+        team: optimizeTeam(hRoster, pRoster, caps, bankedHitting, bankedPitching, bankedByPos),
+        bankedByPos,
+        bankedByRole,
+      };
     };
 
     // Pre-trade rosters
