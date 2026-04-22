@@ -188,6 +188,7 @@ export function optimizeHitters(
 
   const allocG: Record<string, number> = {};
   const allocPositions: Record<string, string[]> = {};
+  const allocPosBreakdown: Record<string, { pos: string; gAlloc: number }[]> = {};
 
   for (const pos of fillOrder) {
     let cap = capLeft[pos] ?? 0;
@@ -204,6 +205,8 @@ export function optimizeHitters(
       allocG[p.id] = (allocG[p.id] ?? 0) + alloc;
       if (!allocPositions[p.id]) allocPositions[p.id] = [];
       allocPositions[p.id].push(pos);
+      if (!allocPosBreakdown[p.id]) allocPosBreakdown[p.id] = [];
+      allocPosBreakdown[p.id].push({ pos, gAlloc: alloc });
     }
     capLeft[pos] = cap;
   }
@@ -218,6 +221,7 @@ export function optimizeHitters(
       gAlloc: g,
       gTotal: p.gTotal,
       positionsFilled: allocPositions[p.id] ?? [],
+      positionAllocations: allocPosBreakdown[p.id] ?? [],
       blPA: p.blPA,
       blR: p.blR,
       blHR: p.blHR,
