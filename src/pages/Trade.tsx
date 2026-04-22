@@ -312,6 +312,7 @@ const Trade = () => {
                   allocations={impact.teamA.optimized.hitterAllocations ?? []}
                   playerLookup={impact.playerLookup}
                   movedInIds={impact.teamA.movedInIds}
+                  bankedByPos={impact.teamA.bankedByPos}
                 />
                 <OptimizedRoster
                   teamName={impact.teamB.name}
@@ -319,6 +320,7 @@ const Trade = () => {
                   allocations={impact.teamB.optimized.hitterAllocations ?? []}
                   playerLookup={impact.playerLookup}
                   movedInIds={impact.teamB.movedInIds}
+                  bankedByPos={impact.teamB.bankedByPos}
                 />
               </div>
             </div>
@@ -334,6 +336,7 @@ const Trade = () => {
                   allocations={impact.teamA.optimized.pitcherAllocations ?? []}
                   playerLookup={impact.playerLookup}
                   movedInIds={impact.teamA.movedInIds}
+                  bankedByRole={impact.teamA.bankedByRole}
                 />
                 <OptimizedRoster
                   teamName={impact.teamB.name}
@@ -341,6 +344,7 @@ const Trade = () => {
                   allocations={impact.teamB.optimized.pitcherAllocations ?? []}
                   playerLookup={impact.playerLookup}
                   movedInIds={impact.teamB.movedInIds}
+                  bankedByRole={impact.teamB.bankedByRole}
                 />
               </div>
             </div>
