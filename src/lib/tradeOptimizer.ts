@@ -41,12 +41,31 @@ export interface HitterAllocation {
   gAlloc: number;
   gTotal: number;
   positionsFilled: string[];
+  /** Per-position allocation breakdown: one entry per slot the player filled */
+  positionAllocations: { pos: string; gAlloc: number }[];
   blPA: number;
   blR: number;
   blHR: number;
   blOBP: number;
   blSLG: number;
   valor: number;
+}
+
+export interface BankedByPos {
+  G: number;
+  AB: number;
+  R: number;
+  HR: number;
+  OBP: number;
+  SLG: number;
+}
+
+export interface BankedByRole {
+  IP: number;
+  K: number;
+  ERA: number;
+  WHIP: number;
+  HR9: number;
 }
 
 export interface PitcherAllocation {
@@ -169,6 +188,7 @@ export function optimizeHitters(
 
   const allocG: Record<string, number> = {};
   const allocPositions: Record<string, string[]> = {};
+  const allocPosBreakdown: Record<string, { pos: string; gAlloc: number }[]> = {};
 
   for (const pos of fillOrder) {
     let cap = capLeft[pos] ?? 0;
@@ -185,6 +205,8 @@ export function optimizeHitters(
       allocG[p.id] = (allocG[p.id] ?? 0) + alloc;
       if (!allocPositions[p.id]) allocPositions[p.id] = [];
       allocPositions[p.id].push(pos);
+      if (!allocPosBreakdown[p.id]) allocPosBreakdown[p.id] = [];
+      allocPosBreakdown[p.id].push({ pos, gAlloc: alloc });
     }
     capLeft[pos] = cap;
   }
@@ -199,6 +221,7 @@ export function optimizeHitters(
       gAlloc: g,
       gTotal: p.gTotal,
       positionsFilled: allocPositions[p.id] ?? [],
+      positionAllocations: allocPosBreakdown[p.id] ?? [],
       blPA: p.blPA,
       blR: p.blR,
       blHR: p.blHR,
@@ -360,10 +383,10 @@ export function parseCaps(rows: string[][]): OptimizerCaps {
 export function buildBankedHitting(
   teamProduction: Record<string, string>[],
   teamName: string
-): { bankedHitting: BankedHitting; bankedByPos: Record<string, { G: number }> } {
+): { bankedHitting: BankedHitting; bankedByPos: Record<string, BankedByPos> } {
   const hitterPositions = new Set(["C","1B","2B","SS","MI","3B","OF","UTIL"]);
   let R = 0, HR = 0, obpNum = 0, slgNum = 0, PA = 0, G = 0;
-  const bankedByPos: Record<string, { G: number }> = {};
+  const bankedByPos: Record<string, BankedByPos> = {};
   for (const row of teamProduction) {
     const team = (row["TeamName"] || "").trim();
     const pos = (row["POS"] || "").trim().toUpperCase();
@@ -382,7 +405,7 @@ export function buildBankedHitting(
     PA     += pa;
     obpNum += obp * pa;
     slgNum += slg * pa;
-    bankedByPos[pos] = { G: g };
+    bankedByPos[pos] = { G: g, AB: ab, R: r, HR: hr, OBP: obp, SLG: slg };
   }
   return { bankedHitting: { G, R, HR, obpNum, slgNum, PA }, bankedByPos };
 }
@@ -390,9 +413,10 @@ export function buildBankedHitting(
 export function buildBankedPitching(
   teamProduction: Record<string, string>[],
   teamName: string
-): BankedPitching {
+): { bankedPitching: BankedPitching; bankedByRole: Record<string, BankedByRole> } {
   const pitcherPositions = new Set(["SP","RP"]);
   let IP = 0, K = 0, eraNum = 0, whipNum = 0, hr9Num = 0;
+  const bankedByRole: Record<string, BankedByRole> = {};
   for (const row of teamProduction) {
     const team = (row["TeamName"] || "").trim();
     const pos = (row["POS"] || "").trim().toUpperCase();
@@ -408,8 +432,9 @@ export function buildBankedPitching(
     eraNum  += era  * ip;
     whipNum += whip * ip;
     hr9Num  += hr9  * ip;
+    bankedByRole[pos] = { IP: ip, K: k, ERA: era, WHIP: whip, HR9: hr9 };
   }
-  return { IP, K, eraNum, whipNum, hr9Num };
+  return { bankedPitching: { IP, K, eraNum, whipNum, hr9Num }, bankedByRole };
 }
 
 export type RotoCategory = "R" | "HR" | "OBP" | "SLG" | "K" | "ERA" | "WHIP" | "HR/9";

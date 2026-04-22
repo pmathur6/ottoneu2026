@@ -143,10 +143,14 @@ const Trade = () => {
     const beforeStats: Record<string, OptimizedTeam["categories"]> = { ...eosBaseline };
 
     // Helper: compute full season stats AND allocations for one team given its hitter/pitcher rosters.
-    const fullSeasonFor = (teamName: string, hRoster: Player[], pRoster: Player[]): OptimizedTeam => {
+    const fullSeasonFor = (teamName: string, hRoster: Player[], pRoster: Player[]) => {
       const { bankedHitting, bankedByPos } = buildBankedHitting(teamProdRows, teamName);
-      const bankedPitching = buildBankedPitching(teamProdRows, teamName);
-      return optimizeTeam(hRoster, pRoster, caps, bankedHitting, bankedPitching, bankedByPos);
+      const { bankedPitching, bankedByRole } = buildBankedPitching(teamProdRows, teamName);
+      return {
+        team: optimizeTeam(hRoster, pRoster, caps, bankedHitting, bankedPitching, bankedByPos),
+        bankedByPos,
+        bankedByRole,
+      };
     };
 
     // Pre-trade rosters
@@ -189,8 +193,8 @@ const Trade = () => {
       if (pitchersInvolved) for (const c of PITCHING_CATS) out[c] = computed[c];
       return out;
     };
-    afterStats[a] = mergeCats(beforeStats[a] ?? optA.categories, optA.categories);
-    afterStats[b] = mergeCats(beforeStats[b] ?? optB.categories, optB.categories);
+    afterStats[a] = mergeCats(beforeStats[a] ?? optA.team.categories, optA.team.categories);
+    afterStats[b] = mergeCats(beforeStats[b] ?? optB.team.categories, optB.team.categories);
 
     const rotoBefore = rankTeams(beforeStats);
     const rotoAfter = rankTeams(afterStats);
@@ -215,7 +219,9 @@ const Trade = () => {
         after: afterStats[a],
         rotoBefore: rotoBefore[a] ?? {},
         rotoAfter: rotoAfter[a] ?? {},
-        optimized: optA,
+        optimized: optA.team,
+        bankedByPos: optA.bankedByPos,
+        bankedByRole: optA.bankedByRole,
         movedInIds: movedToAIds,
       },
       teamB: {
@@ -224,7 +230,9 @@ const Trade = () => {
         after: afterStats[b],
         rotoBefore: rotoBefore[b] ?? {},
         rotoAfter: rotoAfter[b] ?? {},
-        optimized: optB,
+        optimized: optB.team,
+        bankedByPos: optB.bankedByPos,
+        bankedByRole: optB.bankedByRole,
         movedInIds: movedToBIds,
       },
     };
@@ -304,6 +312,7 @@ const Trade = () => {
                   allocations={impact.teamA.optimized.hitterAllocations ?? []}
                   playerLookup={impact.playerLookup}
                   movedInIds={impact.teamA.movedInIds}
+                  bankedByPos={impact.teamA.bankedByPos}
                 />
                 <OptimizedRoster
                   teamName={impact.teamB.name}
@@ -311,6 +320,7 @@ const Trade = () => {
                   allocations={impact.teamB.optimized.hitterAllocations ?? []}
                   playerLookup={impact.playerLookup}
                   movedInIds={impact.teamB.movedInIds}
+                  bankedByPos={impact.teamB.bankedByPos}
                 />
               </div>
             </div>
@@ -326,6 +336,7 @@ const Trade = () => {
                   allocations={impact.teamA.optimized.pitcherAllocations ?? []}
                   playerLookup={impact.playerLookup}
                   movedInIds={impact.teamA.movedInIds}
+                  bankedByRole={impact.teamA.bankedByRole}
                 />
                 <OptimizedRoster
                   teamName={impact.teamB.name}
@@ -333,6 +344,7 @@ const Trade = () => {
                   allocations={impact.teamB.optimized.pitcherAllocations ?? []}
                   playerLookup={impact.playerLookup}
                   movedInIds={impact.teamB.movedInIds}
+                  bankedByRole={impact.teamB.bankedByRole}
                 />
               </div>
             </div>
