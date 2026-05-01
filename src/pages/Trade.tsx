@@ -56,7 +56,7 @@ const Trade = () => {
   }, [assumptions]);
 
   const teamProdRows = useMemo(() => teamProd ? parseTeamProductionRows(teamProd) : null, [teamProd]);
-  const eosBaseline = useMemo(() => eosStand ? parseEosStandings(eosStand) : null, [eosStand]);
+  
 
   const [teamA, setTeamA] = useState("");
   const [teamB, setTeamB] = useState("");
