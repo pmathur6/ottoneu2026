@@ -7,7 +7,7 @@ import TradeBasket from "@/components/trade/TradeBasket";
 import TradeImpact from "@/components/trade/TradeImpact";
 import OptimizedRoster from "@/components/trade/OptimizedRoster";
 import {
-  optimizeTeam, parseCaps, parseTeamProductionRows, parseEosStandings,
+  optimizeTeam, parseCaps, parseTeamProductionRows,
   buildBankedHitting, buildBankedPitching, rankTeams,
   type Player, type OptimizedTeam,
 } from "@/lib/tradeOptimizer";
