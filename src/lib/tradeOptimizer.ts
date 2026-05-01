@@ -269,13 +269,16 @@ export function optimizePitchers(
 
   const players = pitchers
     .map(p => {
-      const ip = num(p["BL_IP"]);
+      const blIP = num(p["BL_IP"]);
+      const ytdIP = num(p["YTD_IP"]);
+      const rosIP = Math.max(0, blIP - ytdIP);
+      if (rosIP <= 0) return null;
       const spElig = truthy(p["SP"]);
       const rpElig = truthy(p["RP"]);
       const warSP = num(p["WAR_SP"]);
       const warRP = num(p["WAR_RP"]);
-      const warIpSP = ip > 0 ? warSP / ip : 0;
-      const warIpRP = ip > 0 ? warRP / ip : 0;
+      const warIpSP = rosIP > 0 ? warSP / rosIP : 0;
+      const warIpRP = rosIP > 0 ? warRP / rosIP : 0;
       let bestWarIp = warIpSP;
       let role: "SP" | "RP" | "—" = spElig ? "SP" : rpElig ? "RP" : "—";
       if (spElig && rpElig) {
@@ -287,8 +290,8 @@ export function optimizePitchers(
       }
       return {
         id: p["playerid"],
-        ipLeft: ip,
-        ipTotal: ip,
+        ipLeft: rosIP,
+        ipTotal: rosIP,
         bestWarIp,
         role,
         blK: num(p["BL_SO"]),
@@ -298,8 +301,7 @@ export function optimizePitchers(
         valor: num(p["Total WAR"]),
       };
     })
-    .filter(p => p.ipTotal > 0)
-    .sort((a, b) => b.bestWarIp - a.bestWarIp);
+    .filter(<T,>(p: T | null): p is T => p !== null)
 
   let cap = remainingCap;
   let valor = 0, totalIP = 0, totalK = 0;
