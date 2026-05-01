@@ -301,7 +301,8 @@ export function optimizePitchers(
         valor: num(p["Total WAR"]),
       };
     })
-    .filter(<T,>(p: T | null): p is T => p !== null)
+    .filter((p): p is NonNullable<typeof p> => p !== null)
+    .sort((a, b) => b.bestWarIp - a.bestWarIp);
 
   let cap = remainingCap;
   let valor = 0, totalIP = 0, totalK = 0;
