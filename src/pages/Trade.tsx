@@ -29,13 +29,9 @@ const Trade = () => {
     queryKey: ["team-production"],
     queryFn: () => fetchSheetRaw("Team Production"),
   });
-  const { data: eosStand, isLoading: esLoad, error: esErr } = useQuery({
-    queryKey: ["eos-standings"],
-    queryFn: () => fetchSheetRaw("EOS Standings"),
-  });
 
-  const isLoading = hLoad || pLoad || aLoad || tpLoad || esLoad;
-  const error = hErr || pErr || aErr || tpErr || esErr;
+  const isLoading = hLoad || pLoad || aLoad || tpLoad;
+  const error = hErr || pErr || aErr || tpErr;
 
   const allHitters = useMemo<Player[]>(
     () => (hitters ?? []).filter(p => (p["Roster"] || "").trim() !== "FA"),
