@@ -7,7 +7,7 @@ import TradeBasket from "@/components/trade/TradeBasket";
 import TradeImpact from "@/components/trade/TradeImpact";
 import OptimizedRoster from "@/components/trade/OptimizedRoster";
 import {
-  optimizeTeam, parseCaps, parseTeamProductionRows, parseEosStandings,
+  optimizeTeam, parseCaps, parseTeamProductionRows,
   buildBankedHitting, buildBankedPitching, rankTeams,
   type Player, type OptimizedTeam,
 } from "@/lib/tradeOptimizer";
@@ -29,13 +29,9 @@ const Trade = () => {
     queryKey: ["team-production"],
     queryFn: () => fetchSheetRaw("Team Production"),
   });
-  const { data: eosStand, isLoading: esLoad, error: esErr } = useQuery({
-    queryKey: ["eos-standings"],
-    queryFn: () => fetchSheetRaw("EOS Standings"),
-  });
 
-  const isLoading = hLoad || pLoad || aLoad || tpLoad || esLoad;
-  const error = hErr || pErr || aErr || tpErr || esErr;
+  const isLoading = hLoad || pLoad || aLoad || tpLoad;
+  const error = hErr || pErr || aErr || tpErr;
 
   const allHitters = useMemo<Player[]>(
     () => (hitters ?? []).filter(p => (p["Roster"] || "").trim() !== "FA"),
@@ -60,7 +56,7 @@ const Trade = () => {
   }, [assumptions]);
 
   const teamProdRows = useMemo(() => teamProd ? parseTeamProductionRows(teamProd) : null, [teamProd]);
-  const eosBaseline = useMemo(() => eosStand ? parseEosStandings(eosStand) : null, [eosStand]);
+  
 
   const [teamA, setTeamA] = useState("");
   const [teamB, setTeamB] = useState("");
@@ -130,17 +126,13 @@ const Trade = () => {
   };
 
   // ===================================================================
-  // Build full season projected stats for all 12 teams.
-  // Baseline = EOS Standings raw stats (already full-season projection).
-  // Post-trade = recompute Team A & Team B using banked + ROS optimizer; other 10 unchanged.
+  // Build full season projected stats for all 12 teams using a single
+  // optimizer methodology so pre-trade vs post-trade are apples-to-apples.
   // ===================================================================
   const impact = useMemo(() => {
-    if (!simulated || !caps || !teamProdRows || !eosBaseline) return null;
+    if (!simulated || !caps || !teamProdRows) return null;
     const { a, b, ids } = simulated;
     const idSet = new Set(ids);
-
-    // Pre-trade baseline: every team uses EOS Standings as-is.
-    const beforeStats: Record<string, OptimizedTeam["categories"]> = { ...eosBaseline };
 
     // Helper: compute full season stats AND allocations for one team given its hitter/pitcher rosters.
     const fullSeasonFor = (teamName: string, hRoster: Player[], pRoster: Player[]) => {
@@ -153,7 +145,17 @@ const Trade = () => {
       };
     };
 
-    // Pre-trade rosters
+    // Step 1: Pre-trade baseline — run optimizer for ALL teams with current rosters.
+    const preOpt: Record<string, ReturnType<typeof fullSeasonFor>> = {};
+    for (const t of teams) {
+      const hRoster = allHitters.filter(p => p["Roster"] === t);
+      const pRoster = allPitchers.filter(p => p["Roster"] === t);
+      preOpt[t] = fullSeasonFor(t, hRoster, pRoster);
+    }
+    const beforeStats: Record<string, OptimizedTeam["categories"]> = {};
+    for (const t of teams) beforeStats[t] = preOpt[t].team.categories;
+
+    // Pre-trade rosters for the two trade teams
     const teamHittersA = allHitters.filter(p => p["Roster"] === a);
     const teamPitchersA = allPitchers.filter(p => p["Roster"] === a);
     const teamHittersB = allHitters.filter(p => p["Roster"] === b);
@@ -175,10 +177,11 @@ const Trade = () => {
     const hittersInvolved = hMovingA.length > 0 || hMovingB.length > 0;
     const pitchersInvolved = pMovingA.length > 0 || pMovingB.length > 0;
 
+    // Step 2: Post-trade — re-run optimizer for only A and B.
     const optA = fullSeasonFor(a, postHittersA, postPitchersA);
     const optB = fullSeasonFor(b, postHittersB, postPitchersB);
 
-    // After-trade stats: replace only A and B in baseline.
+    // Step 3: After-trade stats — replace only A and B; other 10 teams unchanged.
     const afterStats: Record<string, OptimizedTeam["categories"]> = { ...beforeStats };
 
     // If only hitters move, pitching cats stay at baseline. If only pitchers move, hitting cats stay at baseline.
@@ -236,7 +239,7 @@ const Trade = () => {
         movedInIds: movedToBIds,
       },
     };
-  }, [simulated, caps, teamProdRows, eosBaseline, allHitters, allPitchers]);
+  }, [simulated, caps, teamProdRows, teams, allHitters, allPitchers]);
 
   if (isLoading) {
     return (
