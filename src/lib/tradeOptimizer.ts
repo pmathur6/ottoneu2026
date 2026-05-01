@@ -170,7 +170,8 @@ export function optimizeHitters(
       elig["MI"]   = truthy(p["MI"]) || truthy(p["2B"]) || truthy(p["SS"]);
       const warG: Record<string, number> = {};
       for (const pos of POS) {
-        const war = num(p["WAR_" + pos]);
+        const posKey = pos === "UTIL" ? "WAR_Util" : "WAR_" + pos;
+        const war = num(p[posKey]);
         warG[pos] = rosG > 0 ? war / rosG : 0;
       }
       return {
