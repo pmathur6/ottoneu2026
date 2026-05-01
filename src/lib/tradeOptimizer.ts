@@ -153,32 +153,41 @@ export function optimizeHitters(
   const POS = ["UTIL", "C", "1B", "2B", "SS", "MI", "3B", "OF"] as const;
   const fillOrder = ["C", "SS", "2B", "MI", "3B", "1B", "OF", "UTIL"];
 
-  const players: HitterAlloc[] = hitters.map(p => {
-    const g = num(p["BL_G"]);
-    const elig: Record<string, boolean> = {};
-    for (const pos of POS) {
-      elig[pos] = pos === "UTIL" ? true : truthy(p[pos]);
-    }
-    elig["MI"] = /\b(2B|SS)\b/.test(p["Positions"] || "");
-    const warG: Record<string, number> = {};
-    for (const pos of POS) {
-      const war = num(p["WAR_" + pos]);
-      warG[pos] = g > 0 ? war / g : 0;
-    }
-    return {
-      id: p["playerid"],
-      gLeft: g,
-      gTotal: g,
-      elig,
-      warG,
-      blPA: num(p["BL_PA"]),
-      blHR: num(p["BL_HR"]),
-      blR: num(p["BL_R"]),
-      blOBP: num(p["BL_OBP"]),
-      blSLG: num(p["BL_SLG"]),
-      valor: num(p["Total WAR"]),
-    };
-  });
+  const players: HitterAlloc[] = hitters
+    .map(p => {
+      const blG = num(p["BL_G"]);
+      const ytdG = num(p["YTD_G"]);
+      const rosG = Math.max(0, blG - ytdG);
+      if (rosG <= 0) return null;
+      const elig: Record<string, boolean> = {};
+      elig["UTIL"] = truthy(p["UTIL"]);
+      elig["C"]    = truthy(p["C"]);
+      elig["1B"]   = truthy(p["1B"]);
+      elig["2B"]   = truthy(p["2B"]);
+      elig["SS"]   = truthy(p["SS"]);
+      elig["3B"]   = truthy(p["3B"]);
+      elig["OF"]   = truthy(p["OF"]);
+      elig["MI"]   = truthy(p["MI"]) || truthy(p["2B"]) || truthy(p["SS"]);
+      const warG: Record<string, number> = {};
+      for (const pos of POS) {
+        const war = num(p["WAR_" + pos]);
+        warG[pos] = rosG > 0 ? war / rosG : 0;
+      }
+      return {
+        id: p["playerid"],
+        gLeft: rosG,
+        gTotal: rosG,
+        elig,
+        warG,
+        blPA: num(p["BL_PA"]),
+        blHR: num(p["BL_HR"]),
+        blR: num(p["BL_R"]),
+        blOBP: num(p["BL_OBP"]),
+        blSLG: num(p["BL_SLG"]),
+        valor: num(p["Total WAR"]),
+      } as HitterAlloc;
+    })
+    .filter((p): p is HitterAlloc => p !== null);
 
   const capLeft: Record<string, number> = {};
   for (const pos of POS) {
@@ -260,13 +269,16 @@ export function optimizePitchers(
 
   const players = pitchers
     .map(p => {
-      const ip = num(p["BL_IP"]);
+      const blIP = num(p["BL_IP"]);
+      const ytdIP = num(p["YTD_IP"]);
+      const rosIP = Math.max(0, blIP - ytdIP);
+      if (rosIP <= 0) return null;
       const spElig = truthy(p["SP"]);
       const rpElig = truthy(p["RP"]);
       const warSP = num(p["WAR_SP"]);
       const warRP = num(p["WAR_RP"]);
-      const warIpSP = ip > 0 ? warSP / ip : 0;
-      const warIpRP = ip > 0 ? warRP / ip : 0;
+      const warIpSP = rosIP > 0 ? warSP / rosIP : 0;
+      const warIpRP = rosIP > 0 ? warRP / rosIP : 0;
       let bestWarIp = warIpSP;
       let role: "SP" | "RP" | "—" = spElig ? "SP" : rpElig ? "RP" : "—";
       if (spElig && rpElig) {
@@ -278,8 +290,8 @@ export function optimizePitchers(
       }
       return {
         id: p["playerid"],
-        ipLeft: ip,
-        ipTotal: ip,
+        ipLeft: rosIP,
+        ipTotal: rosIP,
         bestWarIp,
         role,
         blK: num(p["BL_SO"]),
@@ -289,7 +301,7 @@ export function optimizePitchers(
         valor: num(p["Total WAR"]),
       };
     })
-    .filter(p => p.ipTotal > 0)
+    .filter((p): p is NonNullable<typeof p> => p !== null)
     .sort((a, b) => b.bestWarIp - a.bestWarIp);
 
   let cap = remainingCap;
