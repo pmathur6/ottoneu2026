@@ -160,7 +160,7 @@ export function optimizeHitters(
       const rosG = Math.max(0, blG - ytdG);
       if (rosG <= 0) return null;
       const elig: Record<string, boolean> = {};
-      elig["UTIL"] = truthy(p["UTIL"]);
+      elig["UTIL"] = true; // every hitter is UTIL eligible by definition
       elig["C"]    = truthy(p["C"]);
       elig["1B"]   = truthy(p["1B"]);
       elig["2B"]   = truthy(p["2B"]);
