@@ -20,7 +20,7 @@ const POSITIONS = ["Util", "C", "1B", "2B", "SS", "3B", "OF", "SP", "RP"];
 
 const HITTER_COLS = [
   "PlayerName", "Positions", "Roster",
-  "Total WAR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason",
+  "Total WAR", "Current Salary", "Expected Value", "YTD EV", "Surplus Value", "Chg. vs. Preseason",
   "YTD_G", "YTD_PA", "YTD_HR", "YTD_R", "YTD_OBP", "YTD_SLG",
   "YTD_wOBA", "YTD_xwOBA", "YTD_AVG", "YTD_BABIP", "YTD_wRC+",
   "ROS_G", "ROS_PA", "ROS_HR", "ROS_R", "ROS_OBP", "ROS_SLG", "ROS_wRC+",
@@ -29,12 +29,17 @@ const HITTER_COLS = [
 
 const PITCHER_COLS = [
   "PlayerName", "Positions", "Roster",
-  "Total WAR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason",
+  "Total WAR", "Current Salary", "Expected Value", "YTD EV", "Surplus Value", "Chg. vs. Preseason",
   "YTD_IP", "YTD_ERA", "YTD_SO", "YTD_WHIP", "YTD_HR/9", "YTD_K/9",
   "YTD_FIP", "YTD_xFIP", "YTD_xERA", "YTD_BABIP",
   "ROS_IP", "ROS_SO", "ROS_ERA", "ROS_WHIP", "ROS_HR/9",
   "BL_IP", "BL_SO", "BL_ERA", "BL_WHIP", "BL_HR/9",
 ];
+
+// Display column name -> underlying sheet header key
+const COL_KEY: Record<string, string> = {
+  "YTD EV": "YTD Expected Value",
+};
 
 // Sticky columns: PlayerName, Pos, Roster
 const STICKY_COLS = new Set(["PlayerName", "Positions"]);
@@ -70,7 +75,7 @@ function formatCell(col: string, value: string) {
 
 function getSection(col: string): string | null {
   if (STICKY_COLS.has(col)) return "sticky";
-  if (["Total WAR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason"].includes(col)) return "overview";
+  if (["Total WAR", "Current Salary", "Expected Value", "YTD EV", "Surplus Value", "Chg. vs. Preseason"].includes(col)) return "overview";
   if (col.startsWith("YTD_")) return "YTD";
   if (col.startsWith("ROS_")) return "ROS";
   if (col.startsWith("BL_")) return "BL";
@@ -257,8 +262,9 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
       return parseFloat(cleaned);
     };
     return [...data].sort((a, b) => {
-      const aVal = a[sortCol] ?? "";
-      const bVal = b[sortCol] ?? "";
+      const key = COL_KEY[sortCol] ?? sortCol;
+      const aVal = a[key] ?? "";
+      const bVal = b[key] ?? "";
       const aNum = parseNum(aVal);
       const bNum = parseNum(bVal);
       let cmp: number;
@@ -403,7 +409,7 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
                           style={stickyStyle}
                           className={`whitespace-nowrap px-3 py-2 text-sm font-mono${isDivider ? " border-l-2 border-border" : ""}${isSticky ? " bg-card" : ""}`}
                         >
-                          {formatCell(col, row[col] ?? "")}
+                          {formatCell(col, row[COL_KEY[col] ?? col] ?? "")}
                         </TableCell>
                       );
                     })}

@@ -93,7 +93,7 @@ export default function RosterPanel({
 }
 
 type SortDir = "asc" | "desc";
-type SortKey = "name" | "pos" | "valor" | "salary" | "ev" | "surplus" | "pt" | "stat1" | "stat2" | "stat3" | "stat4" | "stat5";
+type SortKey = "name" | "pos" | "valor" | "salary" | "ev" | "ytdev" | "surplus" | "pt" | "stat1" | "stat2" | "stat3" | "stat4" | "stat5";
 
 type StatCol = { key: string; label: string; format: (n: number) => string };
 
@@ -146,6 +146,7 @@ function PlayerTable({
         case "valor": return num(p["Total WAR"]);
         case "salary": return num(p["Current Salary"]);
         case "ev": return num(p["Expected Value"]);
+        case "ytdev": return num(p["YTD Expected Value"]);
         case "surplus": return num(p["Surplus Value"]);
         case "pt": return num(p[playingTimeKey]);
         case "stat1":
@@ -173,7 +174,7 @@ function PlayerTable({
     return arr;
   }, [players, sortKey, sortDir, playingTimeKey, statCols]);
 
-  const colSpan = 8 + statCols.length;
+  const colSpan = 9 + statCols.length;
 
   return (
     <div className="space-y-1">
@@ -188,6 +189,7 @@ function PlayerTable({
               <SortableHead label="VALOR" colKey="valor" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right" />
               <SortableHead label="Salary" colKey="salary" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right" />
               <SortableHead label="EV" colKey="ev" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right" />
+              <SortableHead label="YTD EV" colKey="ytdev" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right" />
               <SortableHead label="Surplus" colKey="surplus" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right" />
               <SortableHead label={playingTimeLabel} colKey="pt" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right" />
               {statCols.map((col, i) => (
@@ -236,6 +238,7 @@ function PlayerTable({
                   <TableCell className="text-right font-mono text-sm">{num(p["Total WAR"]).toFixed(1)}</TableCell>
                   <TableCell className="text-right font-mono text-sm">{fmtMoney(p["Current Salary"])}</TableCell>
                   <TableCell className="text-right font-mono text-sm">{fmtMoney(p["Expected Value"])}</TableCell>
+                  <TableCell className="text-right font-mono text-sm">{fmtMoney(p["YTD Expected Value"])}</TableCell>
                   <TableCell className={`text-right font-mono text-sm ${
                     surplus > 0 ? "text-positive" : surplus < 0 ? "text-negative" : ""
                   }`}>
