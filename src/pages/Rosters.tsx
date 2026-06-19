@@ -75,7 +75,7 @@ function formatCell(col: string, value: string) {
 
 function getSection(col: string): string | null {
   if (STICKY_COLS.has(col)) return "sticky";
-  if (["Total WAR", "Current Salary", "Expected Value", "Surplus Value", "Chg. vs. Preseason"].includes(col)) return "overview";
+  if (["Total WAR", "Current Salary", "Expected Value", "YTD EV", "Surplus Value", "Chg. vs. Preseason"].includes(col)) return "overview";
   if (col.startsWith("YTD_")) return "YTD";
   if (col.startsWith("ROS_")) return "ROS";
   if (col.startsWith("BL_")) return "BL";
