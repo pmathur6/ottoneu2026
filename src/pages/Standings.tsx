@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchSheet, fetchSheetRange, fetchSheetRaw } from "@/lib/sheets";
+import { fetchSheetRange } from "@/lib/sheets";
 import { useState, useMemo, useCallback } from "react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -7,29 +7,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RefreshCw, Loader2 } from "lucide-react";
-import {
-  optimizeTeam, parseCaps, parseTeamProductionRows,
-  buildBankedHitting, buildBankedPitching, rankTeams,
-  type Player, type OptimizedTeam,
-} from "@/lib/tradeOptimizer";
 
 const LIVE_STATS_COLS = ["Team", "R", "HR", "OBP", "SLG", "ERA", "K", "WHIP", "HR9"];
 const LIVE_RANK_COLS = ["Team", "R", "HR", "OBP", "SLG", "ERA", "K", "WHIP", "HR9", "Total"];
 const CATEGORY_COLS = ["R", "HR", "OBP", "SLG", "ERA", "K", "WHIP", "HR9", "HR/9"];
 
-const EOS_STATS_COLS = ["Team", "R", "HR", "OBP", "SLG", "K", "ERA", "WHIP", "HR/9"];
-const EOS_RANK_COLS = ["Team", "R", "HR", "OBP", "SLG", "K", "ERA", "WHIP", "HR/9", "Total"];
+const EOS_STATS_COLS = ["Team", "R", "HR", "OBP", "SLG", "K", "ERA", "WHIP", "HR9"];
+const EOS_RANK_COLS = ["Team", "R", "HR", "OBP", "SLG", "K", "ERA", "WHIP", "HR9", "Total"];
 
 function getRankColor(val: number, totalTeams: number): string {
   if (val >= totalTeams - 3) return "text-standings-green";
   if (val <= 4) return "text-standings-red";
   return "";
-}
-
-function fmt(val: number, cat: string): string {
-  if (cat === "OBP" || cat === "SLG") return val.toFixed(3);
-  if (cat === "ERA" || cat === "WHIP" || cat === "HR/9") return val.toFixed(2);
-  return Math.round(val).toString();
 }
 
 const Standings = () => {
@@ -45,32 +34,16 @@ const Standings = () => {
     },
   });
 
-  const { data: hitters, isLoading: hLoad } = useQuery({
-    queryKey: ["blended-h"],
-    queryFn: () => fetchSheet("Blended H"),
-  });
-  const { data: pitchers, isLoading: pLoad } = useQuery({
-    queryKey: ["blended-p"],
-    queryFn: () => fetchSheet("Blended P"),
-  });
-  const { data: assumptions, isLoading: aLoad } = useQuery({
-    queryKey: ["assumptions-caps"],
-    queryFn: () => fetchSheetRange("Assumptions", "B1:B125"),
-  });
-  const { data: teamProd, isLoading: tpLoad } = useQuery({
-    queryKey: ["team-production"],
-    queryFn: () => fetchSheetRaw("Team Production"),
+  const { data: eosRaw, isLoading: eosLoading } = useQuery({
+    queryKey: ["eos-standings"],
+    queryFn: () => fetchSheetRange("EOS Standings", "A1:AA50"),
   });
 
-  const eosLoading = hLoad || pLoad || aLoad || tpLoad;
   const isLoading = liveLoading;
 
   const handleRefresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["live-standings"] });
-    queryClient.invalidateQueries({ queryKey: ["blended-h"] });
-    queryClient.invalidateQueries({ queryKey: ["blended-p"] });
-    queryClient.invalidateQueries({ queryKey: ["assumptions-caps"] });
-    queryClient.invalidateQueries({ queryKey: ["team-production"] });
+    queryClient.invalidateQueries({ queryKey: ["eos-standings"] });
   }, [queryClient]);
 
   // Parse Live Standings - two side-by-side tables
@@ -92,74 +65,46 @@ const Standings = () => {
     return { liveStats: stats, liveRankings: rankings };
   }, [liveRaw]);
 
-  // EOS projections via optimizer
+  // Parse EOS Standings tab - stats cols 0-8, rankings cols 9-17 (incl Total)
   const { eosStats, eosRankings } = useMemo(() => {
-    if (!hitters || !pitchers || !assumptions || !teamProd) {
+    if (!eosRaw || eosRaw.length < 2) {
       return { eosStats: [] as Record<string, string>[], eosRankings: [] as Record<string, string>[] };
     }
-    const allHitters: Player[] = (hitters ?? []).filter(p => (p["Roster"] || "").trim() !== "FA");
-    const allPitchers: Player[] = (pitchers ?? []).filter(p => (p["Roster"] || "").trim() !== "FA");
-    const teamSet = new Set<string>();
-    allHitters.forEach(p => p["Roster"] && teamSet.add(p["Roster"]));
-    allPitchers.forEach(p => p["Roster"] && teamSet.add(p["Roster"]));
-    const teams = Array.from(teamSet).sort();
+    const headerIdx = eosRaw.findIndex(r => r[0]?.trim() === "Team");
+    if (headerIdx < 0) return { eosStats: [], eosRankings: [] };
+    const dataRows = eosRaw.slice(headerIdx + 1).filter(r => r[0]?.trim());
 
-    const reshaped = assumptions.map(row => ["", row[0] ?? ""]);
-    const caps = parseCaps(reshaped);
-    const teamProdRows = parseTeamProductionRows(teamProd);
+    const stats = dataRows.map(row => ({
+      Team: row[0]?.trim() ?? "",
+      R: row[1]?.trim() ?? "",
+      HR: row[2]?.trim() ?? "",
+      OBP: row[3]?.trim() ?? "",
+      SLG: row[4]?.trim() ?? "",
+      K: row[5]?.trim() ?? "",
+      ERA: row[6]?.trim() ?? "",
+      WHIP: row[7]?.trim() ?? "",
+      HR9: row[8]?.trim() ?? "",
+      __total: row[17]?.trim() ?? "0",
+    }));
+    const rankings = dataRows.map(row => ({
+      Team: row[0]?.trim() ?? "",
+      R: (row[9]?.trim() ?? "").replace(/\.0$/, ""),
+      HR: (row[10]?.trim() ?? "").replace(/\.0$/, ""),
+      OBP: (row[11]?.trim() ?? "").replace(/\.0$/, ""),
+      SLG: (row[12]?.trim() ?? "").replace(/\.0$/, ""),
+      K: (row[13]?.trim() ?? "").replace(/\.0$/, ""),
+      ERA: (row[14]?.trim() ?? "").replace(/\.0$/, ""),
+      WHIP: (row[15]?.trim() ?? "").replace(/\.0$/, ""),
+      HR9: (row[16]?.trim() ?? "").replace(/\.0$/, ""),
+      Total: (row[17]?.trim() ?? "").replace(/\.0$/, ""),
+    }));
 
-    const allStats: Record<string, OptimizedTeam["categories"]> = {};
-    for (const t of teams) {
-      const hRoster = allHitters.filter(p => p["Roster"] === t);
-      const pRoster = allPitchers.filter(p => p["Roster"] === t);
-      const { bankedHitting, bankedByPos } = buildBankedHitting(teamProdRows, t);
-      const { bankedPitching } = buildBankedPitching(teamProdRows, t);
-      const opt = optimizeTeam(hRoster, pRoster, caps, bankedHitting, bankedPitching, bankedByPos);
-      allStats[t] = opt.categories;
-    }
+    stats.sort((a, b) => parseFloat(b.__total) - parseFloat(a.__total));
+    rankings.sort((a, b) => parseFloat(b.Total) - parseFloat(a.Total));
+    stats.forEach(r => { delete (r as Record<string, string>).__total; });
 
-    const ranks = rankTeams(allStats);
-
-    const statRows: Record<string, string>[] = [];
-    const rankRows: Record<string, string>[] = [];
-    for (const t of teams) {
-      const cats = allStats[t];
-      const r = ranks[t] ?? {};
-      const total = ["R","HR","OBP","SLG","K","ERA","WHIP","HR/9"]
-        .reduce((s, c) => s + (r[c] ?? 0), 0);
-      statRows.push({
-        Team: t,
-        R: fmt(cats.R, "R"),
-        HR: fmt(cats.HR, "HR"),
-        OBP: fmt(cats.OBP, "OBP"),
-        SLG: fmt(cats.SLG, "SLG"),
-        K: fmt(cats.K, "K"),
-        ERA: fmt(cats.ERA, "ERA"),
-        WHIP: fmt(cats.WHIP, "WHIP"),
-        "HR/9": fmt(cats["HR/9"], "HR/9"),
-        __total: total.toFixed(1),
-      });
-      rankRows.push({
-        Team: t,
-        R: (r["R"] ?? 0).toFixed(1).replace(/\.0$/, ""),
-        HR: (r["HR"] ?? 0).toFixed(1).replace(/\.0$/, ""),
-        OBP: (r["OBP"] ?? 0).toFixed(1).replace(/\.0$/, ""),
-        SLG: (r["SLG"] ?? 0).toFixed(1).replace(/\.0$/, ""),
-        K: (r["K"] ?? 0).toFixed(1).replace(/\.0$/, ""),
-        ERA: (r["ERA"] ?? 0).toFixed(1).replace(/\.0$/, ""),
-        WHIP: (r["WHIP"] ?? 0).toFixed(1).replace(/\.0$/, ""),
-        "HR/9": (r["HR/9"] ?? 0).toFixed(1).replace(/\.0$/, ""),
-        Total: total.toFixed(1).replace(/\.0$/, ""),
-      });
-    }
-
-    // Sort both by total descending
-    statRows.sort((a, b) => parseFloat(b.__total) - parseFloat(a.__total));
-    rankRows.sort((a, b) => parseFloat(b.Total) - parseFloat(a.Total));
-    statRows.forEach(r => { delete r.__total; });
-
-    return { eosStats: statRows, eosRankings: rankRows };
-  }, [hitters, pitchers, assumptions, teamProd]);
+    return { eosStats: stats as Record<string, string>[], eosRankings: rankings };
+  }, [eosRaw]);
 
   if (isLoading) {
     return (
@@ -200,7 +145,7 @@ const Standings = () => {
         {eosLoading ? (
           <div className="flex items-center gap-3 py-12 justify-center text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Running optimizer for all 12 teams…</span>
+            <span>Loading EOS standings…</span>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
