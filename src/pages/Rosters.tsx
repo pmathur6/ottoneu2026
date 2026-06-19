@@ -409,7 +409,7 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
                           style={stickyStyle}
                           className={`whitespace-nowrap px-3 py-2 text-sm font-mono${isDivider ? " border-l-2 border-border" : ""}${isSticky ? " bg-card" : ""}`}
                         >
-                          {formatCell(col, row[col] ?? "")}
+                          {formatCell(col, row[COL_KEY[col] ?? col] ?? "")}
                         </TableCell>
                       );
                     })}
