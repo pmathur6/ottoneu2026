@@ -174,7 +174,7 @@ function PlayerTable({
     return arr;
   }, [players, sortKey, sortDir, playingTimeKey, statCols]);
 
-  const colSpan = 8 + statCols.length;
+  const colSpan = 9 + statCols.length;
 
   return (
     <div className="space-y-1">
