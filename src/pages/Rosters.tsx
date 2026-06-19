@@ -262,8 +262,9 @@ function DataTable({ title, columns, data }: { title: string; columns: string[];
       return parseFloat(cleaned);
     };
     return [...data].sort((a, b) => {
-      const aVal = a[sortCol] ?? "";
-      const bVal = b[sortCol] ?? "";
+      const key = COL_KEY[sortCol] ?? sortCol;
+      const aVal = a[key] ?? "";
+      const bVal = b[key] ?? "";
       const aNum = parseNum(aVal);
       const bNum = parseNum(bVal);
       let cmp: number;
