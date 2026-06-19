@@ -189,6 +189,7 @@ function PlayerTable({
               <SortableHead label="VALOR" colKey="valor" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right" />
               <SortableHead label="Salary" colKey="salary" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right" />
               <SortableHead label="EV" colKey="ev" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right" />
+              <SortableHead label="YTD EV" colKey="ytdev" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right" />
               <SortableHead label="Surplus" colKey="surplus" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right" />
               <SortableHead label={playingTimeLabel} colKey="pt" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right" />
               {statCols.map((col, i) => (
