@@ -238,6 +238,7 @@ function PlayerTable({
                   <TableCell className="text-right font-mono text-sm">{num(p["Total WAR"]).toFixed(1)}</TableCell>
                   <TableCell className="text-right font-mono text-sm">{fmtMoney(p["Current Salary"])}</TableCell>
                   <TableCell className="text-right font-mono text-sm">{fmtMoney(p["Expected Value"])}</TableCell>
+                  <TableCell className="text-right font-mono text-sm">{fmtMoney(p["YTD Expected Value"])}</TableCell>
                   <TableCell className={`text-right font-mono text-sm ${
                     surplus > 0 ? "text-positive" : surplus < 0 ? "text-negative" : ""
                   }`}>
