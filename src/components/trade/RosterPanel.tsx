@@ -146,6 +146,7 @@ function PlayerTable({
         case "valor": return num(p["Total WAR"]);
         case "salary": return num(p["Current Salary"]);
         case "ev": return num(p["Expected Value"]);
+        case "ytdev": return num(p["YTD Expected Value"]);
         case "surplus": return num(p["Surplus Value"]);
         case "pt": return num(p[playingTimeKey]);
         case "stat1":
