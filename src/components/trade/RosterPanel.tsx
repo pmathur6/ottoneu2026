@@ -93,7 +93,7 @@ export default function RosterPanel({
 }
 
 type SortDir = "asc" | "desc";
-type SortKey = "name" | "pos" | "valor" | "salary" | "ev" | "surplus" | "pt" | "stat1" | "stat2" | "stat3" | "stat4" | "stat5";
+type SortKey = "name" | "pos" | "valor" | "salary" | "ev" | "ytdev" | "surplus" | "pt" | "stat1" | "stat2" | "stat3" | "stat4" | "stat5";
 
 type StatCol = { key: string; label: string; format: (n: number) => string };
 
