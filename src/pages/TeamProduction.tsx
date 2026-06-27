@@ -88,6 +88,7 @@ const TeamProduction = () => {
       for (const pos of positions) {
         out[pos] = {};
         for (const stat of stats) {
+          if (stat === "G" || stat === "IP") continue;
           const entries: { team: string; v: number }[] = [];
           for (const t of Object.keys(byTeam)) {
             const v = parseFloat(String(byTeam[t]?.[pos]?.[stat] ?? "").replace(/,/g, ""));
@@ -111,24 +112,66 @@ const TeamProduction = () => {
     };
   }, [prodRaw]);
 
+  // ---------- LIVE STANDINGS (for totals) ----------
+  const { data: liveRaw } = useQuery({
+    queryKey: ["live-standings"],
+    queryFn: () => fetchSheetRange("Live Standings", "A1:T50"),
+  });
+
+  const liveByTeam = useMemo(() => {
+    if (!liveRaw) return {} as Record<string, Record<string, string>>;
+    const idx = liveRaw.findIndex(r => r[0]?.trim() === "Team");
+    if (idx < 0) return {} as Record<string, Record<string, string>>;
+    const map: Record<string, Record<string, string>> = {};
+    for (const r of liveRaw.slice(idx + 1)) {
+      const t = r[0]?.trim();
+      if (!t) continue;
+      map[t] = {
+        R: r[1]?.trim() ?? "",
+        HR: r[2]?.trim() ?? "",
+        OBP: r[3]?.trim() ?? "",
+        SLG: r[4]?.trim() ?? "",
+        K: r[5]?.trim() ?? "",
+        ERA: r[6]?.trim() ?? "",
+        WHIP: r[7]?.trim() ?? "",
+        HR9: r[8]?.trim() ?? "",
+      };
+    }
+    return map;
+  }, [liveRaw]);
+
   // ---------- PROJECTED (Team Projections) ----------
   // Optimized Data: P-AA (cols 15-26). Hitter stats P-U (15-20): G,PA,R,HR,OBP,SLG.
   // Pitcher stats V-AA (21-26): G,IP,K,ERA,WHIP,HR9.
   // Rankings AB-AK (27-36): Hitter R,HR,OBP,SLG,Avg (27-31). Pitcher K,ERA,WHIP,HR9,Avg (32-36).
   const projected = useMemo(() => {
     if (!projRaw || projRaw.length < 3) {
-      return { teams: [] as string[], hitterByTeam: {} as Record<string, Record<string, any>>, pitcherByTeam: {} as Record<string, Record<string, any>> };
+      return { teams: [] as string[], hitterByTeam: {} as Record<string, Record<string, any>>, pitcherByTeam: {} as Record<string, Record<string, any>>, hitterTotals: {} as Record<string, Record<string, string>>, pitcherTotals: {} as Record<string, Record<string, string>> };
     }
     const rows = projRaw.slice(2);
     const hitterByTeam: Record<string, Record<string, any>> = {};
     const pitcherByTeam: Record<string, Record<string, any>> = {};
+    const hitterTotals: Record<string, Record<string, string>> = {};
+    const pitcherTotals: Record<string, Record<string, string>> = {};
     const teamSet = new Set<string>();
 
     for (const r of rows) {
       const team = r[0]?.trim();
-      const pos = r[1]?.trim();
       const type = r[2]?.trim();
-      if (!team || !pos || !type || type === "Total") continue;
+      if (!team || !type) continue;
+
+      if (type === "Total") {
+        hitterTotals[team] = {
+          G: r[15] ?? "", PA: r[16] ?? "", R: r[17] ?? "", HR: r[18] ?? "", OBP: r[19] ?? "", SLG: r[20] ?? "",
+        };
+        pitcherTotals[team] = {
+          G: r[21] ?? "", IP: r[22] ?? "", K: r[23] ?? "", ERA: r[24] ?? "", WHIP: r[25] ?? "", HR9: r[26] ?? "",
+        };
+        continue;
+      }
+
+      const pos = r[1]?.trim();
+      if (!pos) continue;
       teamSet.add(team);
 
       if (type === "Hitter") {
@@ -145,8 +188,52 @@ const TeamProduction = () => {
         };
       }
     }
-    return { teams: Array.from(teamSet).sort(), hitterByTeam, pitcherByTeam };
+    return { teams: Array.from(teamSet).sort(), hitterByTeam, pitcherByTeam, hitterTotals, pitcherTotals };
   }, [projRaw]);
+
+  // Current totals: sum counting stats from position rows; rate stats from Live Standings
+  const currentHitterTotal = useMemo(() => {
+    if (!team) return {} as Record<string, string>;
+    const t = current.hitterByTeam[team];
+    if (!t) return {} as Record<string, string>;
+    let g = 0, ab = 0, r = 0, hr = 0;
+    for (const pos of HITTER_POS) {
+      g += parseFloat(String(t[pos]?.G ?? "0").replace(/,/g, "")) || 0;
+      ab += parseFloat(String(t[pos]?.AB ?? "0").replace(/,/g, "")) || 0;
+      r += parseFloat(String(t[pos]?.R ?? "0").replace(/,/g, "")) || 0;
+      hr += parseFloat(String(t[pos]?.HR ?? "0").replace(/,/g, "")) || 0;
+    }
+    const ls = liveByTeam[team];
+    return {
+      G: String(Math.round(g)),
+      AB: String(Math.round(ab)),
+      R: ls?.R ?? String(Math.round(r)),
+      HR: ls?.HR ?? String(Math.round(hr)),
+      OBP: ls?.OBP ?? "",
+      SLG: ls?.SLG ?? "",
+    };
+  }, [team, current.hitterByTeam, liveByTeam]);
+
+  const currentPitcherTotal = useMemo(() => {
+    if (!team) return {} as Record<string, string>;
+    const t = current.pitcherByTeam[team];
+    if (!t) return {} as Record<string, string>;
+    let g = 0, ip = 0, k = 0;
+    for (const pos of PITCHER_POS) {
+      g += parseFloat(String(t[pos]?.G ?? "0").replace(/,/g, "")) || 0;
+      ip += parseFloat(String(t[pos]?.IP ?? "0").replace(/,/g, "")) || 0;
+      k += parseFloat(String(t[pos]?.K ?? "0").replace(/,/g, "")) || 0;
+    }
+    const ls = liveByTeam[team];
+    return {
+      G: String(Math.round(g)),
+      IP: ip.toFixed(1),
+      K: ls?.K ?? String(Math.round(k)),
+      HR9: ls?.HR9 ?? "",
+      ERA: ls?.ERA ?? "",
+      WHIP: ls?.WHIP ?? "",
+    };
+  }, [team, current.pitcherByTeam, liveByTeam]);
 
   const allTeams = useMemo(() => {
     const s = new Set<string>([...current.teams, ...projected.teams]);
@@ -196,6 +283,7 @@ const TeamProduction = () => {
               statCols={HITTER_STATS as unknown as string[]}
               getCell={(pos, stat) => current.hitterByTeam[team]?.[pos]?.[stat] ?? ""}
               isRank={false}
+              totalRow={currentHitterTotal}
             />
             <ProductionTable
               title="Hitters — Rankings"
@@ -214,6 +302,7 @@ const TeamProduction = () => {
               statCols={PITCHER_STATS as unknown as string[]}
               getCell={(pos, stat) => current.pitcherByTeam[team]?.[pos]?.[stat] ?? ""}
               isRank={false}
+              totalRow={currentPitcherTotal}
             />
             <ProductionTable
               title="Pitchers — Rankings"
@@ -237,6 +326,7 @@ const TeamProduction = () => {
               statCols={["G", "PA", "R", "HR", "OBP", "SLG"]}
               getCell={(pos, stat) => projected.hitterByTeam[team]?.[pos]?.stats?.[stat] ?? ""}
               isRank={false}
+              totalRow={projected.hitterTotals[team]}
             />
             <ProductionTable
               title="Hitters — Rankings"
@@ -252,6 +342,7 @@ const TeamProduction = () => {
               statCols={["G", "IP", "K", "ERA", "WHIP", "HR9"]}
               getCell={(pos, stat) => projected.pitcherByTeam[team]?.[pos]?.stats?.[stat] ?? ""}
               isRank={false}
+              totalRow={projected.pitcherTotals[team]}
             />
             <ProductionTable
               title="Pitchers — Rankings"
@@ -268,13 +359,14 @@ const TeamProduction = () => {
 };
 
 function ProductionTable({
-  title, positions, statCols, getCell, isRank,
+  title, positions, statCols, getCell, isRank, totalRow,
 }: {
   title: string;
   positions: string[];
   statCols: string[];
   getCell: (pos: string, stat: string) => string;
   isRank: boolean;
+  totalRow?: Record<string, string>;
 }) {
   return (
     <div className="space-y-2">
@@ -313,6 +405,19 @@ function ProductionTable({
                   })}
                 </TableRow>
               ))}
+              {totalRow && (
+                <TableRow className="border-t-2 border-border bg-muted/40">
+                  <TableCell className="font-bold px-3 py-2 text-sm">Total</TableCell>
+                  {statCols.map(stat => {
+                    const raw = totalRow[stat] ?? "";
+                    return (
+                      <TableCell key={stat} className="px-3 py-2 text-sm font-mono text-right font-bold">
+                        {raw === "" ? "" : fmtVal(stat, raw)}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
