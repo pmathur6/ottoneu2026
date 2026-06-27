@@ -283,6 +283,7 @@ const TeamProduction = () => {
               statCols={HITTER_STATS as unknown as string[]}
               getCell={(pos, stat) => current.hitterByTeam[team]?.[pos]?.[stat] ?? ""}
               isRank={false}
+              totalRow={currentHitterTotal}
             />
             <ProductionTable
               title="Hitters — Rankings"
@@ -301,6 +302,7 @@ const TeamProduction = () => {
               statCols={PITCHER_STATS as unknown as string[]}
               getCell={(pos, stat) => current.pitcherByTeam[team]?.[pos]?.[stat] ?? ""}
               isRank={false}
+              totalRow={currentPitcherTotal}
             />
             <ProductionTable
               title="Pitchers — Rankings"
