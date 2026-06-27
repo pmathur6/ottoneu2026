@@ -191,6 +191,50 @@ const TeamProduction = () => {
     return { teams: Array.from(teamSet).sort(), hitterByTeam, pitcherByTeam, hitterTotals, pitcherTotals };
   }, [projRaw]);
 
+  // Current totals: sum counting stats from position rows; rate stats from Live Standings
+  const currentHitterTotal = useMemo(() => {
+    if (!team) return {} as Record<string, string>;
+    const t = current.hitterByTeam[team];
+    if (!t) return {} as Record<string, string>;
+    let g = 0, ab = 0, r = 0, hr = 0;
+    for (const pos of HITTER_POS) {
+      g += parseFloat(String(t[pos]?.G ?? "0").replace(/,/g, "")) || 0;
+      ab += parseFloat(String(t[pos]?.AB ?? "0").replace(/,/g, "")) || 0;
+      r += parseFloat(String(t[pos]?.R ?? "0").replace(/,/g, "")) || 0;
+      hr += parseFloat(String(t[pos]?.HR ?? "0").replace(/,/g, "")) || 0;
+    }
+    const ls = liveByTeam[team];
+    return {
+      G: String(Math.round(g)),
+      AB: String(Math.round(ab)),
+      R: ls?.R ?? String(Math.round(r)),
+      HR: ls?.HR ?? String(Math.round(hr)),
+      OBP: ls?.OBP ?? "",
+      SLG: ls?.SLG ?? "",
+    };
+  }, [team, current.hitterByTeam, liveByTeam]);
+
+  const currentPitcherTotal = useMemo(() => {
+    if (!team) return {} as Record<string, string>;
+    const t = current.pitcherByTeam[team];
+    if (!t) return {} as Record<string, string>;
+    let g = 0, ip = 0, k = 0;
+    for (const pos of PITCHER_POS) {
+      g += parseFloat(String(t[pos]?.G ?? "0").replace(/,/g, "")) || 0;
+      ip += parseFloat(String(t[pos]?.IP ?? "0").replace(/,/g, "")) || 0;
+      k += parseFloat(String(t[pos]?.K ?? "0").replace(/,/g, "")) || 0;
+    }
+    const ls = liveByTeam[team];
+    return {
+      G: String(Math.round(g)),
+      IP: ip.toFixed(1),
+      K: ls?.K ?? String(Math.round(k)),
+      HR9: ls?.HR9 ?? "",
+      ERA: ls?.ERA ?? "",
+      WHIP: ls?.WHIP ?? "",
+    };
+  }, [team, current.pitcherByTeam, liveByTeam]);
+
   const allTeams = useMemo(() => {
     const s = new Set<string>([...current.teams, ...projected.teams]);
     return Array.from(s).sort();
