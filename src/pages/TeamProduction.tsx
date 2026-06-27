@@ -355,13 +355,14 @@ const TeamProduction = () => {
 };
 
 function ProductionTable({
-  title, positions, statCols, getCell, isRank,
+  title, positions, statCols, getCell, isRank, totalRow,
 }: {
   title: string;
   positions: string[];
   statCols: string[];
   getCell: (pos: string, stat: string) => string;
   isRank: boolean;
+  totalRow?: Record<string, string>;
 }) {
   return (
     <div className="space-y-2">
@@ -400,6 +401,19 @@ function ProductionTable({
                   })}
                 </TableRow>
               ))}
+              {totalRow && (
+                <TableRow className="border-t-2 border-border bg-muted/40">
+                  <TableCell className="font-bold px-3 py-2 text-sm">Total</TableCell>
+                  {statCols.map(stat => {
+                    const raw = totalRow[stat] ?? "";
+                    return (
+                      <TableCell key={stat} className="px-3 py-2 text-sm font-mono text-right font-bold">
+                        {raw === "" ? "" : fmtVal(stat, raw)}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
