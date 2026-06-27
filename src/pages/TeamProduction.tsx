@@ -326,6 +326,7 @@ const TeamProduction = () => {
               statCols={["G", "PA", "R", "HR", "OBP", "SLG"]}
               getCell={(pos, stat) => projected.hitterByTeam[team]?.[pos]?.stats?.[stat] ?? ""}
               isRank={false}
+              totalRow={projected.hitterTotals[team]}
             />
             <ProductionTable
               title="Hitters — Rankings"
@@ -341,6 +342,7 @@ const TeamProduction = () => {
               statCols={["G", "IP", "K", "ERA", "WHIP", "HR9"]}
               getCell={(pos, stat) => projected.pitcherByTeam[team]?.[pos]?.stats?.[stat] ?? ""}
               isRank={false}
+              totalRow={projected.pitcherTotals[team]}
             />
             <ProductionTable
               title="Pitchers — Rankings"
