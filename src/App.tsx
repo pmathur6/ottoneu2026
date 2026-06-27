@@ -7,6 +7,7 @@ import TopNav from "@/components/TopNav";
 import Standings from "@/pages/Standings";
 import Rosters from "@/pages/Rosters";
 import Trade from "@/pages/Trade";
+import TeamProduction from "@/pages/TeamProduction";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
             <Route path="/" element={<Standings />} />
             <Route path="/rosters" element={<Rosters />} />
             <Route path="/trade" element={<Trade />} />
+            <Route path="/team-production" element={<TeamProduction />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
