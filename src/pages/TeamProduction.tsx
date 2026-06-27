@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fetchSheetRange } from "@/lib/sheets";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -154,9 +154,9 @@ const TeamProduction = () => {
   }, [current.teams, projected.teams]);
 
   // Default team selection
-  if (!team && allTeams.length) {
-    setTeam(allTeams[0]);
-  }
+  useEffect(() => {
+    if (!team && allTeams.length) setTeam(allTeams[0]);
+  }, [team, allTeams]);
 
   const isLoading = prodLoading || projLoading;
 
