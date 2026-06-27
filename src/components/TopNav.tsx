@@ -3,6 +3,7 @@ import { NavLink } from "@/components/NavLink";
 const links = [
   { to: "/", label: "Standings" },
   { to: "/rosters", label: "Rosters" },
+  { to: "/team-production", label: "Team Production" },
   { to: "/trade", label: "Trade Simulator" },
 ];
 
