@@ -112,24 +112,66 @@ const TeamProduction = () => {
     };
   }, [prodRaw]);
 
+  // ---------- LIVE STANDINGS (for totals) ----------
+  const { data: liveRaw } = useQuery({
+    queryKey: ["live-standings"],
+    queryFn: () => fetchSheetRange("Live Standings", "A1:T50"),
+  });
+
+  const liveByTeam = useMemo(() => {
+    if (!liveRaw) return {} as Record<string, Record<string, string>>;
+    const idx = liveRaw.findIndex(r => r[0]?.trim() === "Team");
+    if (idx < 0) return {} as Record<string, Record<string, string>>;
+    const map: Record<string, Record<string, string>> = {};
+    for (const r of liveRaw.slice(idx + 1)) {
+      const t = r[0]?.trim();
+      if (!t) continue;
+      map[t] = {
+        R: r[1]?.trim() ?? "",
+        HR: r[2]?.trim() ?? "",
+        OBP: r[3]?.trim() ?? "",
+        SLG: r[4]?.trim() ?? "",
+        K: r[5]?.trim() ?? "",
+        ERA: r[6]?.trim() ?? "",
+        WHIP: r[7]?.trim() ?? "",
+        HR9: r[8]?.trim() ?? "",
+      };
+    }
+    return map;
+  }, [liveRaw]);
+
   // ---------- PROJECTED (Team Projections) ----------
   // Optimized Data: P-AA (cols 15-26). Hitter stats P-U (15-20): G,PA,R,HR,OBP,SLG.
   // Pitcher stats V-AA (21-26): G,IP,K,ERA,WHIP,HR9.
   // Rankings AB-AK (27-36): Hitter R,HR,OBP,SLG,Avg (27-31). Pitcher K,ERA,WHIP,HR9,Avg (32-36).
   const projected = useMemo(() => {
     if (!projRaw || projRaw.length < 3) {
-      return { teams: [] as string[], hitterByTeam: {} as Record<string, Record<string, any>>, pitcherByTeam: {} as Record<string, Record<string, any>> };
+      return { teams: [] as string[], hitterByTeam: {} as Record<string, Record<string, any>>, pitcherByTeam: {} as Record<string, Record<string, any>>, hitterTotals: {} as Record<string, Record<string, string>>, pitcherTotals: {} as Record<string, Record<string, string>> };
     }
     const rows = projRaw.slice(2);
     const hitterByTeam: Record<string, Record<string, any>> = {};
     const pitcherByTeam: Record<string, Record<string, any>> = {};
+    const hitterTotals: Record<string, Record<string, string>> = {};
+    const pitcherTotals: Record<string, Record<string, string>> = {};
     const teamSet = new Set<string>();
 
     for (const r of rows) {
       const team = r[0]?.trim();
-      const pos = r[1]?.trim();
       const type = r[2]?.trim();
-      if (!team || !pos || !type || type === "Total") continue;
+      if (!team || !type) continue;
+
+      if (type === "Total") {
+        hitterTotals[team] = {
+          G: r[15] ?? "", PA: r[16] ?? "", R: r[17] ?? "", HR: r[18] ?? "", OBP: r[19] ?? "", SLG: r[20] ?? "",
+        };
+        pitcherTotals[team] = {
+          G: r[21] ?? "", IP: r[22] ?? "", K: r[23] ?? "", ERA: r[24] ?? "", WHIP: r[25] ?? "", HR9: r[26] ?? "",
+        };
+        continue;
+      }
+
+      const pos = r[1]?.trim();
+      if (!pos) continue;
       teamSet.add(team);
 
       if (type === "Hitter") {
@@ -146,7 +188,7 @@ const TeamProduction = () => {
         };
       }
     }
-    return { teams: Array.from(teamSet).sort(), hitterByTeam, pitcherByTeam };
+    return { teams: Array.from(teamSet).sort(), hitterByTeam, pitcherByTeam, hitterTotals, pitcherTotals };
   }, [projRaw]);
 
   const allTeams = useMemo(() => {
