@@ -88,6 +88,7 @@ const TeamProduction = () => {
       for (const pos of positions) {
         out[pos] = {};
         for (const stat of stats) {
+          if (stat === "G" || stat === "IP") continue;
           const entries: { team: string; v: number }[] = [];
           for (const t of Object.keys(byTeam)) {
             const v = parseFloat(String(byTeam[t]?.[pos]?.[stat] ?? "").replace(/,/g, ""));
