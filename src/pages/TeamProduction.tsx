@@ -410,9 +410,10 @@ function ProductionTable({
                   <TableCell className="font-bold px-3 py-2 text-sm">Total</TableCell>
                   {statCols.map(stat => {
                     const raw = totalRow[stat] ?? "";
+                    const display = raw === "" ? "" : (isRank ? String(Math.round(Number(raw))) : fmtVal(stat, raw));
                     return (
                       <TableCell key={stat} className="px-3 py-2 text-sm font-mono text-right font-bold">
-                        {raw === "" ? "" : fmtVal(stat, raw)}
+                        {display}
                       </TableCell>
                     );
                   })}
