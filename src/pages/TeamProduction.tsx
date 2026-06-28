@@ -172,7 +172,11 @@ const TeamProduction = () => {
     const idx = eosRaw.findIndex(r => r[0]?.trim() === "Team");
     if (idx < 0) return {} as Record<string, Record<string, string>>;
     const map: Record<string, Record<string, string>> = {};
-    const clean = (v: string) => (v ?? "").trim().replace(/\.0$/, "");
+    const clean = (v: string) => {
+      const s = (v ?? "").trim().replace(/\.0$/, "");
+      const n = parseFloat(s);
+      return isFinite(n) ? String(13 - Math.round(n)) : s;
+    };
     for (const r of eosRaw.slice(idx + 1)) {
       const t = r[0]?.trim();
       if (!t) continue;
