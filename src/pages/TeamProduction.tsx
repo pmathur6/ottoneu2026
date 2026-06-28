@@ -140,6 +140,46 @@ const TeamProduction = () => {
     return map;
   }, [liveRaw]);
 
+  // Live Standings rankings (cols 10-19): Team,R,HR,OBP,SLG,ERA,K,WHIP,HR9,Total
+  const liveRanksByTeam = useMemo(() => {
+    if (!liveRaw) return {} as Record<string, Record<string, string>>;
+    const idx = liveRaw.findIndex(r => r[0]?.trim() === "Team");
+    if (idx < 0) return {} as Record<string, Record<string, string>>;
+    const map: Record<string, Record<string, string>> = {};
+    const clean = (v: string) => (v ?? "").trim().replace(/\.0$/, "");
+    for (const r of liveRaw.slice(idx + 1)) {
+      const t = r[10]?.trim();
+      if (!t) continue;
+      map[t] = {
+        R: clean(r[11]), HR: clean(r[12]), OBP: clean(r[13]), SLG: clean(r[14]),
+        ERA: clean(r[15]), K: clean(r[16]), WHIP: clean(r[17]), HR9: clean(r[18]),
+      };
+    }
+    return map;
+  }, [liveRaw]);
+
+  // EOS Standings rankings (cols 9-16): R,HR,OBP,SLG,K,ERA,WHIP,HR9
+  const { data: eosRaw } = useQuery({
+    queryKey: ["eos-standings"],
+    queryFn: () => fetchSheetRange("EOS Standings", "A1:AA50"),
+  });
+  const eosRanksByTeam = useMemo(() => {
+    if (!eosRaw) return {} as Record<string, Record<string, string>>;
+    const idx = eosRaw.findIndex(r => r[0]?.trim() === "Team");
+    if (idx < 0) return {} as Record<string, Record<string, string>>;
+    const map: Record<string, Record<string, string>> = {};
+    const clean = (v: string) => (v ?? "").trim().replace(/\.0$/, "");
+    for (const r of eosRaw.slice(idx + 1)) {
+      const t = r[0]?.trim();
+      if (!t) continue;
+      map[t] = {
+        R: clean(r[9]), HR: clean(r[10]), OBP: clean(r[11]), SLG: clean(r[12]),
+        K: clean(r[13]), ERA: clean(r[14]), WHIP: clean(r[15]), HR9: clean(r[16]),
+      };
+    }
+    return map;
+  }, [eosRaw]);
+
   // ---------- PROJECTED (Team Projections) ----------
   // Optimized Data: P-AA (cols 15-26). Hitter stats P-U (15-20): G,PA,R,HR,OBP,SLG.
   // Pitcher stats V-AA (21-26): G,IP,K,ERA,WHIP,HR9.
