@@ -294,6 +294,14 @@ const TeamProduction = () => {
                 return r ? String(r) : "";
               }}
               isRank
+              totalRow={Object.fromEntries((HITTER_STATS as unknown as string[]).map(stat => {
+                let sum = 0, any = false;
+                for (const pos of HITTER_POS) {
+                  const r = current.hitterRanks[pos]?.[stat]?.[team];
+                  if (r) { sum += r; any = true; }
+                }
+                return [stat, any ? String(sum) : ""];
+              }))}
             />
 
             <ProductionTable
@@ -313,6 +321,14 @@ const TeamProduction = () => {
                 return r ? String(r) : "";
               }}
               isRank
+              totalRow={Object.fromEntries((PITCHER_STATS as unknown as string[]).map(stat => {
+                let sum = 0, any = false;
+                for (const pos of PITCHER_POS) {
+                  const r = current.pitcherRanks[pos]?.[stat]?.[team];
+                  if (r) { sum += r; any = true; }
+                }
+                return [stat, any ? String(sum) : ""];
+              }))}
             />
           </section>
 
