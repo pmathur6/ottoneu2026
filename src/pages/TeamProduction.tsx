@@ -88,7 +88,7 @@ const TeamProduction = () => {
       for (const pos of positions) {
         out[pos] = {};
         for (const stat of stats) {
-          if (stat === "G" || stat === "IP") continue;
+          if (stat === "G" || stat === "IP" || stat === "AB") continue;
           const entries: { team: string; v: number }[] = [];
           for (const t of Object.keys(byTeam)) {
             const v = parseFloat(String(byTeam[t]?.[pos]?.[stat] ?? "").replace(/,/g, ""));
@@ -294,6 +294,14 @@ const TeamProduction = () => {
                 return r ? String(r) : "";
               }}
               isRank
+              totalRow={Object.fromEntries((HITTER_STATS as unknown as string[]).map(stat => {
+                let sum = 0, any = false;
+                for (const pos of HITTER_POS) {
+                  const r = current.hitterRanks[pos]?.[stat]?.[team];
+                  if (r) { sum += r; any = true; }
+                }
+                return [stat, any ? String(sum) : ""];
+              }))}
             />
 
             <ProductionTable
@@ -313,6 +321,14 @@ const TeamProduction = () => {
                 return r ? String(r) : "";
               }}
               isRank
+              totalRow={Object.fromEntries((PITCHER_STATS as unknown as string[]).map(stat => {
+                let sum = 0, any = false;
+                for (const pos of PITCHER_POS) {
+                  const r = current.pitcherRanks[pos]?.[stat]?.[team];
+                  if (r) { sum += r; any = true; }
+                }
+                return [stat, any ? String(sum) : ""];
+              }))}
             />
           </section>
 
@@ -334,6 +350,14 @@ const TeamProduction = () => {
               statCols={["R", "HR", "OBP", "SLG", "Avg"]}
               getCell={(pos, stat) => projected.hitterByTeam[team]?.[pos]?.ranks?.[stat] ?? ""}
               isRank
+              totalRow={Object.fromEntries(["R", "HR", "OBP", "SLG", "Avg"].map(stat => {
+                let sum = 0, any = false;
+                for (const pos of HITTER_POS) {
+                  const v = parseFloat(String(projected.hitterByTeam[team]?.[pos]?.ranks?.[stat] ?? ""));
+                  if (isFinite(v)) { sum += v; any = true; }
+                }
+                return [stat, any ? String(Math.round(sum)) : ""];
+              }))}
             />
 
             <ProductionTable
@@ -350,6 +374,14 @@ const TeamProduction = () => {
               statCols={["K", "ERA", "WHIP", "HR9", "Avg"]}
               getCell={(pos, stat) => projected.pitcherByTeam[team]?.[pos]?.ranks?.[stat] ?? ""}
               isRank
+              totalRow={Object.fromEntries(["K", "ERA", "WHIP", "HR9", "Avg"].map(stat => {
+                let sum = 0, any = false;
+                for (const pos of PITCHER_POS) {
+                  const v = parseFloat(String(projected.pitcherByTeam[team]?.[pos]?.ranks?.[stat] ?? ""));
+                  if (isFinite(v)) { sum += v; any = true; }
+                }
+                return [stat, any ? String(Math.round(sum)) : ""];
+              }))}
             />
           </section>
         </>
@@ -410,9 +442,10 @@ function ProductionTable({
                   <TableCell className="font-bold px-3 py-2 text-sm">Total</TableCell>
                   {statCols.map(stat => {
                     const raw = totalRow[stat] ?? "";
+                    const display = raw === "" ? "" : (isRank ? String(Math.round(Number(raw))) : fmtVal(stat, raw));
                     return (
                       <TableCell key={stat} className="px-3 py-2 text-sm font-mono text-right font-bold">
-                        {raw === "" ? "" : fmtVal(stat, raw)}
+                        {display}
                       </TableCell>
                     );
                   })}
