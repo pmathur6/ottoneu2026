@@ -140,6 +140,46 @@ const TeamProduction = () => {
     return map;
   }, [liveRaw]);
 
+  // Live Standings rankings (cols 10-19): Team,R,HR,OBP,SLG,ERA,K,WHIP,HR9,Total
+  const liveRanksByTeam = useMemo(() => {
+    if (!liveRaw) return {} as Record<string, Record<string, string>>;
+    const idx = liveRaw.findIndex(r => r[0]?.trim() === "Team");
+    if (idx < 0) return {} as Record<string, Record<string, string>>;
+    const map: Record<string, Record<string, string>> = {};
+    const clean = (v: string) => (v ?? "").trim().replace(/\.0$/, "");
+    for (const r of liveRaw.slice(idx + 1)) {
+      const t = r[10]?.trim();
+      if (!t) continue;
+      map[t] = {
+        R: clean(r[11]), HR: clean(r[12]), OBP: clean(r[13]), SLG: clean(r[14]),
+        ERA: clean(r[15]), K: clean(r[16]), WHIP: clean(r[17]), HR9: clean(r[18]),
+      };
+    }
+    return map;
+  }, [liveRaw]);
+
+  // EOS Standings rankings (cols 9-16): R,HR,OBP,SLG,K,ERA,WHIP,HR9
+  const { data: eosRaw } = useQuery({
+    queryKey: ["eos-standings"],
+    queryFn: () => fetchSheetRange("EOS Standings", "A1:AA50"),
+  });
+  const eosRanksByTeam = useMemo(() => {
+    if (!eosRaw) return {} as Record<string, Record<string, string>>;
+    const idx = eosRaw.findIndex(r => r[0]?.trim() === "Team");
+    if (idx < 0) return {} as Record<string, Record<string, string>>;
+    const map: Record<string, Record<string, string>> = {};
+    const clean = (v: string) => (v ?? "").trim().replace(/\.0$/, "");
+    for (const r of eosRaw.slice(idx + 1)) {
+      const t = r[0]?.trim();
+      if (!t) continue;
+      map[t] = {
+        R: clean(r[9]), HR: clean(r[10]), OBP: clean(r[11]), SLG: clean(r[12]),
+        K: clean(r[13]), ERA: clean(r[14]), WHIP: clean(r[15]), HR9: clean(r[16]),
+      };
+    }
+    return map;
+  }, [eosRaw]);
+
   // ---------- PROJECTED (Team Projections) ----------
   // Optimized Data: P-AA (cols 15-26). Hitter stats P-U (15-20): G,PA,R,HR,OBP,SLG.
   // Pitcher stats V-AA (21-26): G,IP,K,ERA,WHIP,HR9.
@@ -294,14 +334,7 @@ const TeamProduction = () => {
                 return r ? String(r) : "";
               }}
               isRank
-              totalRow={Object.fromEntries((HITTER_STATS as unknown as string[]).map(stat => {
-                let sum = 0, any = false;
-                for (const pos of HITTER_POS) {
-                  const r = current.hitterRanks[pos]?.[stat]?.[team];
-                  if (r) { sum += r; any = true; }
-                }
-                return [stat, any ? String(sum) : ""];
-              }))}
+              totalRow={liveRanksByTeam[team] ?? {}}
             />
 
             <ProductionTable
@@ -321,14 +354,7 @@ const TeamProduction = () => {
                 return r ? String(r) : "";
               }}
               isRank
-              totalRow={Object.fromEntries((PITCHER_STATS as unknown as string[]).map(stat => {
-                let sum = 0, any = false;
-                for (const pos of PITCHER_POS) {
-                  const r = current.pitcherRanks[pos]?.[stat]?.[team];
-                  if (r) { sum += r; any = true; }
-                }
-                return [stat, any ? String(sum) : ""];
-              }))}
+              totalRow={liveRanksByTeam[team] ?? {}}
             />
           </section>
 
@@ -350,14 +376,7 @@ const TeamProduction = () => {
               statCols={["R", "HR", "OBP", "SLG", "Avg"]}
               getCell={(pos, stat) => projected.hitterByTeam[team]?.[pos]?.ranks?.[stat] ?? ""}
               isRank
-              totalRow={Object.fromEntries(["R", "HR", "OBP", "SLG", "Avg"].map(stat => {
-                let sum = 0, any = false;
-                for (const pos of HITTER_POS) {
-                  const v = parseFloat(String(projected.hitterByTeam[team]?.[pos]?.ranks?.[stat] ?? ""));
-                  if (isFinite(v)) { sum += v; any = true; }
-                }
-                return [stat, any ? String(Math.round(sum)) : ""];
-              }))}
+              totalRow={eosRanksByTeam[team] ?? {}}
             />
 
             <ProductionTable
@@ -374,14 +393,7 @@ const TeamProduction = () => {
               statCols={["K", "ERA", "WHIP", "HR9", "Avg"]}
               getCell={(pos, stat) => projected.pitcherByTeam[team]?.[pos]?.ranks?.[stat] ?? ""}
               isRank
-              totalRow={Object.fromEntries(["K", "ERA", "WHIP", "HR9", "Avg"].map(stat => {
-                let sum = 0, any = false;
-                for (const pos of PITCHER_POS) {
-                  const v = parseFloat(String(projected.pitcherByTeam[team]?.[pos]?.ranks?.[stat] ?? ""));
-                  if (isFinite(v)) { sum += v; any = true; }
-                }
-                return [stat, any ? String(Math.round(sum)) : ""];
-              }))}
+              totalRow={eosRanksByTeam[team] ?? {}}
             />
           </section>
         </>
