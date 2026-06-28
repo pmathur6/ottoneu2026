@@ -393,14 +393,7 @@ const TeamProduction = () => {
               statCols={["K", "ERA", "WHIP", "HR9", "Avg"]}
               getCell={(pos, stat) => projected.pitcherByTeam[team]?.[pos]?.ranks?.[stat] ?? ""}
               isRank
-              totalRow={Object.fromEntries(["K", "ERA", "WHIP", "HR9", "Avg"].map(stat => {
-                let sum = 0, any = false;
-                for (const pos of PITCHER_POS) {
-                  const v = parseFloat(String(projected.pitcherByTeam[team]?.[pos]?.ranks?.[stat] ?? ""));
-                  if (isFinite(v)) { sum += v; any = true; }
-                }
-                return [stat, any ? String(Math.round(sum)) : ""];
-              }))}
+              totalRow={eosRanksByTeam[team] ?? {}}
             />
           </section>
         </>
