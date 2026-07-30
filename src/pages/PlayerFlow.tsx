@@ -113,14 +113,14 @@ const PlayerFlowPage = () => {
       return node.y + i * unit;
     };
 
-    const links = laid.map(({ flow, ys }) => ({
+    const links = sorted.map(flow => ({
       flow,
-      ys,
+      ys: take(flow.source),
       ym: takeMid(flow.middle),
       yd: takeDst(flow.dest),
     }));
 
-    void bands;
+
     return { nodes, links, unit, height };
   }, [flows, individual]);
 
