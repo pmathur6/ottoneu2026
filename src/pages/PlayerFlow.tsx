@@ -98,17 +98,6 @@ const PlayerFlowPage = () => {
       cursor.set(id, i + 1);
       return node.y + i * unit;
     };
-
-    const bands = sorted.map(f => ({
-      flow: f,
-      y1: take(f.source + "|s"), // placeholder replaced below
-    }));
-    // recompute properly (three independent cursors per node)
-    cursor.clear();
-    const laid = sorted.map(f => {
-      const ys = take(f.source);
-      return { flow: f, ys };
-    });
     const midCursor = new Map<string, number>();
     const takeMid = (id: string) => {
       const node = nodes.get(id)!;
