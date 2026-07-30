@@ -26,6 +26,7 @@ const App = () => (
             <Route path="/rosters" element={<Rosters />} />
             <Route path="/trade" element={<Trade />} />
             <Route path="/team-production" element={<TeamProduction />} />
+            <Route path="/player-flow" element={<PlayerFlow />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
