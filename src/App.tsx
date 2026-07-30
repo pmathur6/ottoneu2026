@@ -8,6 +8,7 @@ import Standings from "@/pages/Standings";
 import Rosters from "@/pages/Rosters";
 import Trade from "@/pages/Trade";
 import TeamProduction from "@/pages/TeamProduction";
+import PlayerFlow from "@/pages/PlayerFlow";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/rosters" element={<Rosters />} />
             <Route path="/trade" element={<Trade />} />
             <Route path="/team-production" element={<TeamProduction />} />
+            <Route path="/player-flow" element={<PlayerFlow />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>

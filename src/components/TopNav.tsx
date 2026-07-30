@@ -5,6 +5,7 @@ const links = [
   { to: "/rosters", label: "Rosters" },
   { to: "/team-production", label: "Team Production" },
   { to: "/trade", label: "Trade Simulator" },
+  { to: "/player-flow", label: "Player Flow" },
 ];
 
 const TopNav = () => (
