@@ -8,6 +8,7 @@ import Standings from "@/pages/Standings";
 import Rosters from "@/pages/Rosters";
 import Trade from "@/pages/Trade";
 import TeamProduction from "@/pages/TeamProduction";
+import PlayerFlow from "@/pages/PlayerFlow";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
