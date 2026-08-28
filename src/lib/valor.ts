@@ -82,10 +82,12 @@ export async function fetchAssumptions(): Promise<Assumptions> {
     tiers,
     medianAge: find("Median Age"),
     changePerYear: find("Change per year"),
-    ageMax: find("Max", 1) || 0.25,
-    ageMin: (() => {
+    ...(() => {
       const i = rows.findIndex(r => (r?.[0] ?? "").trim() === "Aging Curves");
-      return i >= 0 ? num(cell(rows, i + 4, 1)) : -0.25;
+      return {
+        ageMax: i >= 0 ? num(cell(rows, i + 3, 1)) : 0.25,
+        ageMin: i >= 0 ? num(cell(rows, i + 4, 1)) : -0.25,
+      };
     })(),
   };
 }
