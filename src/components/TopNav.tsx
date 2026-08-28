@@ -6,6 +6,7 @@ const links = [
   { to: "/team-production", label: "Team Production" },
   { to: "/trade", label: "Trade Simulator" },
   { to: "/player-flow", label: "Player Flow" },
+  { to: "/valor-calculator", label: "VALOR/EV Calculator" },
 ];
 
 const TopNav = () => (

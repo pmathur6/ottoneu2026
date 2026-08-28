@@ -9,6 +9,7 @@ import Rosters from "@/pages/Rosters";
 import Trade from "@/pages/Trade";
 import TeamProduction from "@/pages/TeamProduction";
 import PlayerFlow from "@/pages/PlayerFlow";
+import ValorCalculator from "@/pages/ValorCalculator";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/trade" element={<Trade />} />
             <Route path="/team-production" element={<TeamProduction />} />
             <Route path="/player-flow" element={<PlayerFlow />} />
+            <Route path="/valor-calculator" element={<ValorCalculator />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
