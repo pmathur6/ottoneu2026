@@ -9,6 +9,7 @@ import Rosters from "@/pages/Rosters";
 import Trade from "@/pages/Trade";
 import TeamProduction from "@/pages/TeamProduction";
 import PlayerFlow from "@/pages/PlayerFlow";
+import ValorCalculator from "@/pages/ValorCalculator";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
