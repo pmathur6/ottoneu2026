@@ -28,6 +28,7 @@ const App = () => (
             <Route path="/trade" element={<Trade />} />
             <Route path="/team-production" element={<TeamProduction />} />
             <Route path="/player-flow" element={<PlayerFlow />} />
+            <Route path="/valor-calculator" element={<ValorCalculator />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
