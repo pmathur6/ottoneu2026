@@ -116,7 +116,7 @@ export interface ValorResult {
 
 const safeDiv = (n: number, d: number) => (d === 0 ? 0 : n / d);
 
-export function calcHitter(i: HitterInput, a: Assumptions): ValorResult {
+function hitterWAR(i: HitterInput, a: Assumptions) {
   const obpImpact = (i.OBP - a.avgOBP) * i.PA;
   const slgImpact = (i.SLG - a.avgSLG) * i.PA;
   const weightedOBP = safeDiv(a.iqr["SLG Impact"], a.iqr["OBP Impact"]) * obpImpact;
@@ -128,12 +128,17 @@ export function calcHitter(i: HitterInput, a: Assumptions): ValorResult {
 
   const raw = (sR * a.hitW.R + sHR * a.hitW.HR + sOBP * a.hitW.OBP + sSLG * a.hitW.SLG) * 4;
   const war = Math.max(...i.positions.map(p => raw - (a.repl[p] ?? 0)));
-  const total = war + (a.versatility[i.positions.length] ?? 0);
-
-  return finish(total, safeDiv(total, i.G) * 162, 1, i.age, a, raw);
+  return { raw, total: war + (a.versatility[i.positions.length] ?? 0) };
 }
 
-export function calcPitcher(i: PitcherInput, a: Assumptions): ValorResult {
+export function calcHitter(i: HitterInput, a: Assumptions): ValorResult {
+  const actual = hitterWAR(i, a);
+  const f = i.G > 0 ? 162 / i.G : 0;
+  const pro = hitterWAR({ ...i, G: 162, PA: i.PA * f, HR: i.HR * f, R: i.R * f }, a);
+  return finish(actual.total, pro.total, 1, i.age, a, actual.raw);
+}
+
+function pitcherWAR(i: PitcherInput, a: Assumptions) {
   const eraImpact = (a.avgERA - i.ERA) * i.IP;
   const whipImpact = (a.avgWHIP - i.WHIP) * i.IP;
   const hr9Impact = (a.avgHR9 - i.HR9) * i.IP;
@@ -145,9 +150,14 @@ export function calcPitcher(i: PitcherInput, a: Assumptions): ValorResult {
 
   const raw = (sK * a.pitW.K + sERA * a.pitW.ERA + sWHIP * a.pitW.WHIP + sHR9 * a.pitW.HR9) * 4;
   const war = Math.max(...i.positions.map(p => raw - (a.repl[p] ?? 0)));
-  const total = war + (a.versatility[i.positions.length] ?? 0);
+  return { raw, total: war + (a.versatility[i.positions.length] ?? 0) };
+}
 
-  return finish(total, safeDiv(total, i.IP) * 180, 2, i.age, a, raw);
+export function calcPitcher(i: PitcherInput, a: Assumptions): ValorResult {
+  const actual = pitcherWAR(i, a);
+  const f = i.IP > 0 ? 180 / i.IP : 0;
+  const pro = pitcherWAR({ ...i, IP: 180, K: i.K * f }, a);
+  return finish(actual.total, pro.total, 2, i.age, a, actual.raw);
 }
 
 function finish(total: number, prorated: number, base: number, age: number | null, a: Assumptions, raw: number): ValorResult {
@@ -163,3 +173,4 @@ function finish(total: number, prorated: number, base: number, age: number | nul
     proratedEV: expectedValue(pv, age, a),
   };
 }
+
