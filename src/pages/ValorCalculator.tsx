@@ -204,7 +204,15 @@ const ValorCalculator = () => {
                 <tr>
                   <td className="px-4 py-3 font-medium">
                     Pro-rated
-                    <span className="text-muted-foreground font-normal"> ({mode === "hitter" ? "162 G" : "180 IP"})</span>
+                    <span className="text-muted-foreground font-normal">
+                      {" "}(
+                      {mode === "hitter"
+                        ? "150 G"
+                        : result.proratedInput && "IP" in result.proratedInput && result.proratedInput.IP === 80
+                          ? "80 IP (RP-only)"
+                          : "170 IP"}
+                      )
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-primary">{fmtWAR(result.proratedWAR)}</td>
                   <td className="px-4 py-3 text-right font-mono text-primary">{fmtEV(result.proratedEV)}</td>
