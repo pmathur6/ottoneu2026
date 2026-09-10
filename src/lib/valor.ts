@@ -134,9 +134,10 @@ function hitterWAR(i: HitterInput, a: Assumptions) {
 
 export function calcHitter(i: HitterInput, a: Assumptions): ValorResult {
   const actual = hitterWAR(i, a);
-  const f = i.G > 0 ? 162 / i.G : 0;
-  const pro = hitterWAR({ ...i, G: 162, PA: i.PA * f, HR: i.HR * f, R: i.R * f }, a);
-  return finish(actual.total, pro.total, 1, i.age, a, actual.raw);
+  const f = i.G > 0 ? 150 / i.G : 0;
+  const proInput: HitterInput = { ...i, G: 150, PA: i.PA * f, HR: i.HR * f, R: i.R * f };
+  const pro = hitterWAR(proInput, a);
+  return { ...finish(actual.total, pro.total, 1, i.age, a, actual.raw), proratedInput: proInput };
 }
 
 function pitcherWAR(i: PitcherInput, a: Assumptions) {
