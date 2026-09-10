@@ -157,9 +157,11 @@ function pitcherWAR(i: PitcherInput, a: Assumptions) {
 
 export function calcPitcher(i: PitcherInput, a: Assumptions): ValorResult {
   const actual = pitcherWAR(i, a);
-  const f = i.IP > 0 ? 180 / i.IP : 0;
-  const pro = pitcherWAR({ ...i, IP: 180, K: i.K * f }, a);
-  return finish(actual.total, pro.total, 2, i.age, a, actual.raw);
+  const cap = i.positions.length === 1 && i.positions[0] === "RP" ? 80 : 170;
+  const f = i.IP > 0 ? cap / i.IP : 0;
+  const proInput: PitcherInput = { ...i, IP: cap, K: i.K * f };
+  const pro = pitcherWAR(proInput, a);
+  return { ...finish(actual.total, pro.total, 2, i.age, a, actual.raw), proratedInput: proInput };
 }
 
 function finish(total: number, prorated: number, base: number, age: number | null, a: Assumptions, raw: number): ValorResult {
