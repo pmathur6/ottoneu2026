@@ -112,6 +112,7 @@ export interface ValorResult {
   proratedWAR: number;
   proratedValuation: number;
   proratedEV: number;
+  proratedInput?: HitterInput | PitcherInput;
 }
 
 const safeDiv = (n: number, d: number) => (d === 0 ? 0 : n / d);
@@ -133,9 +134,10 @@ function hitterWAR(i: HitterInput, a: Assumptions) {
 
 export function calcHitter(i: HitterInput, a: Assumptions): ValorResult {
   const actual = hitterWAR(i, a);
-  const f = i.G > 0 ? 162 / i.G : 0;
-  const pro = hitterWAR({ ...i, G: 162, PA: i.PA * f, HR: i.HR * f, R: i.R * f }, a);
-  return finish(actual.total, pro.total, 1, i.age, a, actual.raw);
+  const f = i.G > 0 ? 150 / i.G : 0;
+  const proInput: HitterInput = { ...i, G: 150, PA: i.PA * f, HR: i.HR * f, R: i.R * f };
+  const pro = hitterWAR(proInput, a);
+  return { ...finish(actual.total, pro.total, 1, i.age, a, actual.raw), proratedInput: proInput };
 }
 
 function pitcherWAR(i: PitcherInput, a: Assumptions) {
@@ -155,9 +157,11 @@ function pitcherWAR(i: PitcherInput, a: Assumptions) {
 
 export function calcPitcher(i: PitcherInput, a: Assumptions): ValorResult {
   const actual = pitcherWAR(i, a);
-  const f = i.IP > 0 ? 180 / i.IP : 0;
-  const pro = pitcherWAR({ ...i, IP: 180, K: i.K * f }, a);
-  return finish(actual.total, pro.total, 2, i.age, a, actual.raw);
+  const cap = i.positions.length === 1 && i.positions[0] === "RP" ? 80 : 170;
+  const f = i.IP > 0 ? cap / i.IP : 0;
+  const proInput: PitcherInput = { ...i, IP: cap, K: i.K * f };
+  const pro = pitcherWAR(proInput, a);
+  return { ...finish(actual.total, pro.total, 2, i.age, a, actual.raw), proratedInput: proInput };
 }
 
 function finish(total: number, prorated: number, base: number, age: number | null, a: Assumptions, raw: number): ValorResult {
