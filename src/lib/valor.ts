@@ -112,6 +112,7 @@ export interface ValorResult {
   proratedWAR: number;
   proratedValuation: number;
   proratedEV: number;
+  proratedInput?: HitterInput | PitcherInput;
 }
 
 const safeDiv = (n: number, d: number) => (d === 0 ? 0 : n / d);
