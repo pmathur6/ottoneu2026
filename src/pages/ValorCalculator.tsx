@@ -220,6 +220,38 @@ const ValorCalculator = () => {
               </tbody>
             </table>
           </div>
+          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+            <h3 className="text-sm font-medium">
+              Pro-rated stat line (
+              {mode === "hitter"
+                ? "150 G"
+                : result.proratedInput && "IP" in result.proratedInput && result.proratedInput.IP === 80
+                  ? "80 IP (RP-only)"
+                  : "170 IP"}
+              )
+            </h3>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-4 text-sm">
+              {mode === "hitter" && result.proratedInput && "PA" in result.proratedInput ? (
+                <>
+                  <div><div className="text-xs text-muted-foreground">G</div><div className="font-mono">150</div></div>
+                  <div><div className="text-xs text-muted-foreground">PA</div><div className="font-mono">{result.proratedInput.PA.toFixed(0)}</div></div>
+                  <div><div className="text-xs text-muted-foreground">HR</div><div className="font-mono">{result.proratedInput.HR.toFixed(0)}</div></div>
+                  <div><div className="text-xs text-muted-foreground">R</div><div className="font-mono">{result.proratedInput.R.toFixed(0)}</div></div>
+                  <div><div className="text-xs text-muted-foreground">OBP</div><div className="font-mono">{result.proratedInput.OBP.toFixed(3)}</div></div>
+                  <div><div className="text-xs text-muted-foreground">SLG</div><div className="font-mono">{result.proratedInput.SLG.toFixed(3)}</div></div>
+                </>
+              ) : result.proratedInput && "IP" in result.proratedInput ? (
+                <>
+                  <div><div className="text-xs text-muted-foreground">IP</div><div className="font-mono">{result.proratedInput.IP.toFixed(0)}</div></div>
+                  <div><div className="text-xs text-muted-foreground">K</div><div className="font-mono">{result.proratedInput.K.toFixed(0)}</div></div>
+                  <div><div className="text-xs text-muted-foreground">ERA</div><div className="font-mono">{result.proratedInput.ERA.toFixed(2)}</div></div>
+                  <div><div className="text-xs text-muted-foreground">WHIP</div><div className="font-mono">{result.proratedInput.WHIP.toFixed(2)}</div></div>
+                  <div><div className="text-xs text-muted-foreground">HR/9</div><div className="font-mono">{result.proratedInput.HR9.toFixed(2)}</div></div>
+                </>
+              ) : null}
+            </div>
+          </div>
+
           <p className="text-xs text-muted-foreground max-w-3xl">
             Prospect Bonus not included — values for non-MLB prospects will read slightly low vs. the master sheet.
             Live league-average assumptions refresh each time you calculate, so results may shift slightly day to day
