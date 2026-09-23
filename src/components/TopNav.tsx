@@ -4,9 +4,9 @@ const links = [
   { to: "/", label: "Standings" },
   { to: "/rosters", label: "Rosters" },
   { to: "/team-production", label: "Team Production" },
+  { to: "/valor-calculator", label: "VALOR/EV Calculator" },
   { to: "/trade", label: "Trade Simulator" },
   { to: "/player-flow", label: "Player Flow" },
-  { to: "/valor-calculator", label: "VALOR/EV Calculator" },
 ];
 
 const TopNav = () => (
